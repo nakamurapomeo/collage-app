@@ -108,9 +108,17 @@ function App() {
   const [isSearching, setIsSearching] = useState(false);
   const [baseSize, setBaseSize] = useState(100);
   const [zoomImage, setZoomImage] = useState(null);
+  const [zoomItemId, setZoomItemId] = useState(null);
   const [isScaling, setIsScaling] = useState(false);
+  const [showCropModal, setShowCropModal] = useState(false);
+  const [cropImage, setCropImage] = useState(null);
+  const [cropItemId, setCropItemId] = useState(null);
+  const [cropStart, setCropStart] = useState(null);
+  const [cropEnd, setCropEnd] = useState(null);
+  const [isCropping, setIsCropping] = useState(false);
   const canvasRef = useRef(null);
   const fileInputRef = useRef(null);
+  const cropCanvasRef = useRef(null);
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 2000); };
 
@@ -495,6 +503,92 @@ function App() {
     }
   };
 
+  // Crop functions
+  const openCropEditor = (src, itemId) => {
+    setCropImage(src);
+    setCropItemId(itemId);
+    setCropStart(null);
+    setCropEnd(null);
+    setZoomImage(null);
+    setZoomItemId(null);
+    setShowCropModal(true);
+  };
+
+  const handleCropStart = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = (e.clientX || e.touches?.[0]?.clientX) - rect.left;
+    const y = (e.clientY || e.touches?.[0]?.clientY) - rect.top;
+    setCropStart({ x, y });
+    setCropEnd({ x, y });
+    setIsCropping(true);
+  };
+
+  const handleCropMove = (e) => {
+    if (!isCropping) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = Math.max(0, Math.min((e.clientX || e.touches?.[0]?.clientX) - rect.left, rect.width));
+    const y = Math.max(0, Math.min((e.clientY || e.touches?.[0]?.clientY) - rect.top, rect.height));
+    setCropEnd({ x, y });
+  };
+
+  const handleCropEnd = () => {
+    setIsCropping(false);
+  };
+
+  const applyCrop = async () => {
+    if (!cropStart || !cropEnd || !cropImage || !cropItemId) return;
+
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.src = cropImage;
+
+    await new Promise(r => img.onload = r);
+
+    const displayImg = cropCanvasRef.current?.querySelector('img');
+    if (!displayImg) return;
+
+    const scaleX = img.naturalWidth / displayImg.clientWidth;
+    const scaleY = img.naturalHeight / displayImg.clientHeight;
+
+    const x1 = Math.min(cropStart.x, cropEnd.x) * scaleX;
+    const y1 = Math.min(cropStart.y, cropEnd.y) * scaleY;
+    const w = Math.abs(cropEnd.x - cropStart.x) * scaleX;
+    const h = Math.abs(cropEnd.y - cropStart.y) * scaleY;
+
+    if (w < 10 || h < 10) {
+      showToast('クロップ範囲が小さすぎます');
+      return;
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, x1, y1, w, h, 0, 0, w, h);
+
+    const croppedUrl = canvas.toDataURL('image/jpeg', 0.9);
+    const dims = { width: w, height: h };
+    const aspectRatio = dims.width / dims.height;
+    const baseHeight = baseSize;
+    const baseWidth = baseHeight * aspectRatio;
+
+    setItems(prev => {
+      const updated = prev.map(i =>
+        i.id === cropItemId
+          ? { ...i, src: croppedUrl, baseWidth, baseHeight, aspectRatio }
+          : i
+      );
+      return packItemsTight(updated, canvasWidth);
+    });
+
+    setShowCropModal(false);
+    setCropImage(null);
+    setCropItemId(null);
+    setCropStart(null);
+    setCropEnd(null);
+    showToast('クロップしました');
+  };
+
   const canvasHeight = items.length > 0
     ? Math.max(150, Math.max(...items.map(i => i.y + Math.floor((i.baseHeight || 100) * (i.scale || 1)))) + 8)
     : 150;
@@ -609,7 +703,7 @@ function App() {
                 onDragOver={(e) => handleItemDragOver(e, index)}
                 onDragEnd={handleItemDragEnd}
                 onClick={(e) => { e.stopPropagation(); setSelectedId(item.id); }}
-                onDoubleClick={() => item.type === 'image' && setZoomImage(item.src)}
+                onDoubleClick={() => { if (item.type === 'image') { setZoomImage(item.src); setZoomItemId(item.id); } }}
               >
                 {item.type === 'image' ? (
                   <img src={item.src} alt="" draggable={false} />
@@ -650,10 +744,47 @@ function App() {
 
       {/* Zoom Modal */}
       {zoomImage && (
-        <div className="modal-overlay" onClick={() => setZoomImage(null)}>
+        <div className="modal-overlay" onClick={() => { setZoomImage(null); setZoomItemId(null); }}>
           <div className="zoom-modal" onClick={e => e.stopPropagation()}>
-            <button className="close-btn" onClick={() => setZoomImage(null)}>×</button>
+            <button className="close-btn" onClick={() => { setZoomImage(null); setZoomItemId(null); }}>×</button>
             <img src={zoomImage} alt="zoomed" />
+            <button className="edit-btn" onClick={() => openCropEditor(zoomImage, zoomItemId)}>✂️ クロップ</button>
+          </div>
+        </div>
+      )}
+
+      {/* Crop Modal */}
+      {showCropModal && cropImage && (
+        <div className="modal-overlay" onClick={() => setShowCropModal(false)}>
+          <div className="crop-modal" onClick={e => e.stopPropagation()}>
+            <button className="close-btn" onClick={() => setShowCropModal(false)}>×</button>
+            <h2>✂️ クロップ</h2>
+            <p className="crop-hint">ドラッグで範囲を選択</p>
+            <div
+              className="crop-container"
+              ref={cropCanvasRef}
+              onMouseDown={handleCropStart}
+              onMouseMove={handleCropMove}
+              onMouseUp={handleCropEnd}
+              onMouseLeave={handleCropEnd}
+              onTouchStart={handleCropStart}
+              onTouchMove={handleCropMove}
+              onTouchEnd={handleCropEnd}
+            >
+              <img src={cropImage} alt="crop" draggable={false} />
+              {cropStart && cropEnd && (
+                <div
+                  className="crop-selection"
+                  style={{
+                    left: Math.min(cropStart.x, cropEnd.x),
+                    top: Math.min(cropStart.y, cropEnd.y),
+                    width: Math.abs(cropEnd.x - cropStart.x),
+                    height: Math.abs(cropEnd.y - cropStart.y)
+                  }}
+                />
+              )}
+            </div>
+            <button onClick={applyCrop} disabled={!cropStart || !cropEnd}>適用</button>
           </div>
         </div>
       )}
