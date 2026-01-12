@@ -924,16 +924,25 @@ function App() {
                   }}
                 />
               )}
-              {cropMagnifier && (
+              {cropMagnifier && cropCanvasRef.current && (
                 <div
                   className="crop-magnifier"
                   style={{
-                    left: Math.max(45, cropMagnifier.x - 60),
-                    top: Math.max(45, cropMagnifier.y - 90),
-                    backgroundImage: `url(${cropImage})`,
-                    backgroundPosition: `${-cropMagnifier.x * 2 + 45}px ${-cropMagnifier.y * 2 + 45}px`
+                    left: Math.max(50, cropMagnifier.x - 70),
+                    top: Math.max(50, cropMagnifier.y - 70),
                   }}
-                />
+                >
+                  <div
+                    className="magnifier-content"
+                    style={{
+                      backgroundImage: `url(${cropImage})`,
+                      backgroundSize: `${(cropCanvasRef.current.querySelector('img')?.clientWidth || 200) * 3}px auto`,
+                      backgroundPosition: `${-cropMagnifier.x * 3 + 40}px ${-cropMagnifier.y * 3 + 40}px`
+                    }}
+                  >
+                    <div className="magnifier-crosshair" />
+                  </div>
+                </div>
               )}
             </div>
             <div className="crop-buttons">
@@ -958,10 +967,9 @@ function App() {
 
       {/* Text Modal */}
       {showTextModal && (
-        <div className="modal-overlay" onClick={() => setShowTextModal(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-overlay modal-overlay-top" onClick={() => setShowTextModal(false)}>
+          <div className="modal modal-top" onClick={e => e.stopPropagation()}>
             <button className="close-btn" onClick={() => setShowTextModal(false)}>×</button>
-            <h2>✏️ テキスト追加</h2>
             <input type="text" value={textInput} onChange={e => setTextInput(e.target.value)} placeholder="テキストを入力..." autoFocus />
             <div className="modal-row">
               <label>色</label>
@@ -982,12 +990,12 @@ function App() {
         <div className="modal-overlay modal-overlay-top" onClick={() => setShowSearchModal(false)}>
           <div className="modal modal-top" onClick={e => e.stopPropagation()}>
             <button className="close-btn" onClick={() => setShowSearchModal(false)}>×</button>
-            <h2>🔍 画像検索</h2>
             <input
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="検索ワード..."
+              autoFocus
             />
             <div className="search-buttons">
               <button onClick={openGoogleImageSearch}>🔍 Google</button>
