@@ -870,3 +870,74 @@ html {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* Cloud Sync Modal */
+.cloud-actions {
+  margin: 12px 0;
+}
+
+.cloud-btn {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.cloud-btn.upload {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  color: white;
+}
+
+.cloud-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cloud-saves {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+  margin-top: 12px;
+}
+
+.cloud-saves-title {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+
+.cloud-empty {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 12px;
+}
+
+.cloud-save-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+  background: var(--bg-card);
+  border-radius: 6px;
+  margin-bottom: 6px;
+}
+
+.cloud-save-item span {
+  cursor: pointer;
+  flex: 1;
+}
+
+.cloud-save-item span:hover {
+  color: var(--accent);
+}
+
+.cloud-save-item button {
+  background: transparent;
+  border: none;
+  color: var(--danger);
+  cursor: pointer;
+  padding: 4px 8px;
+}

@@ -1,0 +1,12 @@
+name = "collage-sync-api"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+
+# R2バケットのバインディング
+[[r2_buckets]]
+binding = "COLLAGE_BUCKET"
+bucket_name = "collage-sync"
+
+# 環境変数（必要に応じて設定）
+[vars]
+ALLOWED_ORIGIN = "https://collage-app.pages.dev"

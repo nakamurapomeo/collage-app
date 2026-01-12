@@ -65,6 +65,45 @@ const deleteFromDB = async (id) => {
   });
 };
 
+// Cloud Sync API
+const SYNC_API_URL = 'https://collage-sync-api.nakamurapomeo.workers.dev';
+
+const cloudUpload = async (name, zipBlob, password) => {
+  const formData = new FormData();
+  formData.append('file', zipBlob, `${name}.zip`);
+  formData.append('name', name);
+
+  const res = await fetch(`${SYNC_API_URL}/api/sync/upload`, {
+    method: 'POST',
+    headers: { 'X-Sync-Password': password },
+    body: formData
+  });
+  return res.json();
+};
+
+const cloudDownload = async (name, password) => {
+  const res = await fetch(`${SYNC_API_URL}/api/sync/download?name=${encodeURIComponent(name)}`, {
+    headers: { 'X-Sync-Password': password }
+  });
+  if (!res.ok) throw new Error('Download failed');
+  return res.blob();
+};
+
+const cloudList = async (password) => {
+  const res = await fetch(`${SYNC_API_URL}/api/sync/list`, {
+    headers: { 'X-Sync-Password': password }
+  });
+  return res.json();
+};
+
+const cloudDelete = async (name, password) => {
+  const res = await fetch(`${SYNC_API_URL}/api/sync/delete?name=${encodeURIComponent(name)}`, {
+    method: 'DELETE',
+    headers: { 'X-Sync-Password': password }
+  });
+  return res.json();
+};
+
 const readFileAsDataURL = (file) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -117,6 +156,10 @@ function App() {
   const [longPressTimer, setLongPressTimer] = useState(null);
   const [pullStartY, setPullStartY] = useState(null);
   const [isPulling, setIsPulling] = useState(false);
+  const [showCloudModal, setShowCloudModal] = useState(false);
+  const [syncPassword, setSyncPassword] = useState(() => localStorage.getItem('syncPassword') || '');
+  const [cloudSaves, setCloudSaves] = useState([]);
+  const [isSyncing, setIsSyncing] = useState(false);
   const canvasRef = useRef(null);
   const fileInputRef = useRef(null);
   const cropCanvasRef = useRef(null);
@@ -569,6 +612,122 @@ function App() {
     }
   };
 
+  // Cloud Sync Functions
+  const createZipBlob = async () => {
+    const zip = new JSZip();
+    const data = { items: [], bgColor, baseSize };
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type === 'image' && item.src.startsWith('data:')) {
+        const ext = item.src.includes('gif') ? 'gif' : 'jpg';
+        const base64Data = item.src.split(',')[1];
+        zip.file(`images/${item.id}.${ext}`, base64Data, { base64: true });
+        data.items.push({ ...item, src: `images/${item.id}.${ext}` });
+      } else {
+        data.items.push(item);
+      }
+    }
+
+    zip.file('data.json', JSON.stringify(data, null, 2));
+    return await zip.generateAsync({ type: 'blob' });
+  };
+
+  const uploadToCloud = async () => {
+    if (!syncPassword) {
+      showToast('同期パスワードを設定してください');
+      return;
+    }
+    if (!currentSaveName) {
+      showToast('先にローカル保存してください');
+      return;
+    }
+
+    setIsSyncing(true);
+    try {
+      const zipBlob = await createZipBlob();
+      await cloudUpload(currentSaveName, zipBlob, syncPassword);
+      showToast('☁️ クラウドにアップロードしました');
+      await fetchCloudSaves();
+    } catch (err) {
+      console.error('Upload error:', err);
+      showToast('アップロードに失敗しました');
+    }
+    setIsSyncing(false);
+  };
+
+  const downloadFromCloud = async (name) => {
+    if (!syncPassword) {
+      showToast('同期パスワードを設定してください');
+      return;
+    }
+
+    setIsSyncing(true);
+    try {
+      const zipBlob = await cloudDownload(name, syncPassword);
+      const zip = await JSZip.loadAsync(zipBlob);
+      const dataFile = zip.file('data.json');
+      if (!dataFile) {
+        showToast('無効なZipファイルです');
+        setIsSyncing(false);
+        return;
+      }
+      const jsonText = await dataFile.async('string');
+      const data = JSON.parse(jsonText);
+
+      const newItems = [];
+      for (const item of data.items) {
+        if (item.type === 'image' && item.src.startsWith('images/')) {
+          const imgFile = zip.file(item.src);
+          if (imgFile) {
+            const base64 = await imgFile.async('base64');
+            const ext = item.src.includes('gif') ? 'gif' : 'jpeg';
+            newItems.push({ ...item, src: `data:image/${ext};base64,${base64}` });
+          }
+        } else {
+          newItems.push(item);
+        }
+      }
+
+      setItems(packItemsTight(newItems, canvasWidth));
+      setBgColor(data.bgColor || '#1a1a2e');
+      setBaseSize(data.baseSize || 100);
+      setCurrentSaveName(name);
+      showToast('☁️ クラウドから読み込みました');
+      setShowCloudModal(false);
+    } catch (err) {
+      console.error('Download error:', err);
+      showToast('ダウンロードに失敗しました');
+    }
+    setIsSyncing(false);
+  };
+
+  const fetchCloudSaves = async () => {
+    if (!syncPassword) return;
+    try {
+      const result = await cloudList(syncPassword);
+      setCloudSaves(result.saves || []);
+    } catch (err) {
+      console.error('List error:', err);
+    }
+  };
+
+  const deleteCloudSave = async (name) => {
+    if (!confirm(`「${name}」をクラウドから削除しますか？`)) return;
+    try {
+      await cloudDelete(name, syncPassword);
+      showToast('削除しました');
+      await fetchCloudSaves();
+    } catch (err) {
+      showToast('削除に失敗しました');
+    }
+  };
+
+  const saveSyncPassword = (pw) => {
+    setSyncPassword(pw);
+    localStorage.setItem('syncPassword', pw);
+  };
+
   // Crop functions - direct open
   const openCropEditor = (src, itemId) => {
     setCropImage(src);
@@ -808,6 +967,7 @@ function App() {
           <button onClick={shuffleItems} title="シャッフル">🎲</button>
           <button onClick={() => setShowSaveModal(true)} title="新規保存">💾</button>
           {currentSaveName && <button onClick={() => overwriteSave(false)} title="上書き保存">💾✓</button>}
+          <button onClick={() => { setShowCloudModal(true); fetchCloudSaves(); }} title="クラウド同期">☁️</button>
           <button onClick={() => setShowSettings(!showSettings)} title="設定">⚙️</button>
           <input
             ref={fileInputRef}
@@ -1038,6 +1198,50 @@ function App() {
               <button onClick={openDuckDuckGoImageSearch}>🦆 DuckDuckGo</button>
             </div>
             <p className="search-note">ブラウザで画像を長押し保存→📁から追加</p>
+          </div>
+        </div>
+      )}
+
+      {/* Cloud Sync Modal */}
+      {showCloudModal && (
+        <div className="modal-overlay" onClick={() => setShowCloudModal(false)}>
+          <div className="modal modal-wide" onClick={e => e.stopPropagation()}>
+            <button className="close-btn" onClick={() => setShowCloudModal(false)}>×</button>
+            <h2>☁️ クラウド同期</h2>
+
+            <div className="modal-row">
+              <label>パスワード</label>
+              <input
+                type="password"
+                value={syncPassword}
+                onChange={e => saveSyncPassword(e.target.value)}
+                placeholder="同期パスワード..."
+              />
+            </div>
+
+            <div className="cloud-actions">
+              <button
+                onClick={uploadToCloud}
+                disabled={isSyncing || !currentSaveName}
+                className="cloud-btn upload"
+              >
+                {isSyncing ? '...' : '⬆️ アップロード'}
+              </button>
+            </div>
+
+            <div className="cloud-saves">
+              <div className="cloud-saves-title">クラウド保存データ</div>
+              {cloudSaves.length === 0 ? (
+                <div className="cloud-empty">データなし</div>
+              ) : (
+                cloudSaves.map(s => (
+                  <div key={s.name} className="cloud-save-item">
+                    <span onClick={() => downloadFromCloud(s.name)}>{s.name}</span>
+                    <button onClick={() => deleteCloudSave(s.name)}>×</button>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       )}
