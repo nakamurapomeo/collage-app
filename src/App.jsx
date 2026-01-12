@@ -150,44 +150,83 @@ function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Gap-free bin packing algorithm
-  const packItemsTight = useCallback((itemList, width) => {
+  // Justified row layout - zero gap masonry like FStop/Google Photos
+  const packItemsTight = useCallback((itemList, containerWidth) => {
     if (itemList.length === 0) return [];
 
+    const targetRowHeight = baseSize; // Target height for each row
     const packed = [];
-    const heights = new Array(Math.ceil(width)).fill(0);
+    let currentY = 0;
+    let rowItems = [];
+    let rowAspectSum = 0;
 
-    for (const item of itemList) {
-      const itemWidth = Math.floor((item.baseWidth || 100) * (item.scale || 1));
-      const itemHeight = Math.floor((item.baseHeight || 100) * (item.scale || 1));
+    const finalizeRow = (items, aspectSum, y, isLastRow = false) => {
+      if (items.length === 0) return;
 
-      // Find the best position (lowest point that fits)
-      let bestX = 0;
-      let bestY = Infinity;
+      // Calculate row height to fill entire width
+      // rowWidth = sum(height * aspectRatio) for each item
+      // For justified: containerWidth = rowHeight * sum(aspectRatios)
+      // So: rowHeight = containerWidth / sum(aspectRatios)
+      let rowHeight = containerWidth / aspectSum;
 
-      for (let x = 0; x <= width - itemWidth; x++) {
-        // Find max height in this range
-        let maxH = 0;
-        for (let i = x; i < x + itemWidth && i < heights.length; i++) {
-          maxH = Math.max(maxH, heights[i]);
-        }
-        if (maxH < bestY) {
-          bestY = maxH;
-          bestX = x;
-        }
+      // Limit row height for last incomplete row
+      if (isLastRow && rowHeight > targetRowHeight * 1.5) {
+        rowHeight = targetRowHeight;
       }
 
-      // Place the item
-      packed.push({ ...item, x: bestX, y: bestY });
+      let x = 0;
+      for (const item of items) {
+        const aspectRatio = item.aspectRatio || ((item.baseWidth || 100) / (item.baseHeight || 100));
+        const itemWidth = Math.floor(rowHeight * aspectRatio);
+        const itemHeight = Math.floor(rowHeight);
 
-      // Update heights
-      for (let i = bestX; i < bestX + itemWidth && i < heights.length; i++) {
-        heights[i] = bestY + itemHeight;
+        // Calculate scale factor to achieve this size
+        const baseW = item.baseWidth || 100;
+        const baseH = item.baseHeight || 100;
+        const scale = itemHeight / baseH;
+
+        packed.push({
+          ...item,
+          x: Math.floor(x),
+          y: Math.floor(y),
+          baseWidth: baseW,
+          baseHeight: baseH,
+          scale: scale
+        });
+
+        x += itemWidth;
+      }
+
+      return Math.floor(rowHeight);
+    };
+
+    for (const item of itemList) {
+      const aspectRatio = item.aspectRatio || ((item.baseWidth || 100) / (item.baseHeight || 100));
+
+      // Add item to current row
+      rowItems.push(item);
+      rowAspectSum += aspectRatio;
+
+      // Check if row is full (would result in height <= target)
+      const potentialHeight = containerWidth / rowAspectSum;
+
+      if (potentialHeight <= targetRowHeight) {
+        // Row is complete, finalize it
+        const rowHeight = finalizeRow(rowItems, rowAspectSum, currentY);
+        currentY += rowHeight;
+        rowItems = [];
+        rowAspectSum = 0;
       }
     }
 
+    // Handle remaining items in last row
+    if (rowItems.length > 0) {
+      const rowHeight = finalizeRow(rowItems, rowAspectSum, currentY, true);
+      currentY += rowHeight;
+    }
+
     return packed;
-  }, []);
+  }, [baseSize]);
 
   // Pack all items
   const packItems = useCallback(() => {
