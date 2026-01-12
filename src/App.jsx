@@ -928,10 +928,10 @@ function App() {
                 <div
                   className="crop-magnifier"
                   style={{
-                    left: cropMagnifier.x,
-                    top: Math.max(0, cropMagnifier.y - 100),
+                    left: Math.max(45, cropMagnifier.x - 60),
+                    top: Math.max(45, cropMagnifier.y - 90),
                     backgroundImage: `url(${cropImage})`,
-                    backgroundPosition: `${-cropMagnifier.x * 2 + 40}px ${-cropMagnifier.y * 2 + 40}px`
+                    backgroundPosition: `${-cropMagnifier.x * 2 + 45}px ${-cropMagnifier.y * 2 + 45}px`
                   }}
                 />
               )}
@@ -979,8 +979,8 @@ function App() {
 
       {/* Search Modal */}
       {showSearchModal && (
-        <div className="modal-overlay" onClick={() => setShowSearchModal(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-overlay modal-overlay-top" onClick={() => setShowSearchModal(false)}>
+          <div className="modal modal-top" onClick={e => e.stopPropagation()}>
             <button className="close-btn" onClick={() => setShowSearchModal(false)}>×</button>
             <h2>🔍 画像検索</h2>
             <input
@@ -988,13 +988,12 @@ function App() {
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="検索ワード..."
-              autoFocus
             />
             <div className="search-buttons">
               <button onClick={openGoogleImageSearch}>🔍 Google</button>
               <button onClick={openDuckDuckGoImageSearch}>🦆 DuckDuckGo</button>
             </div>
-            <p className="search-note">ブラウザで開いた画像は長押し保存→📁から追加</p>
+            <p className="search-note">ブラウザで画像を長押し保存→📁から追加</p>
           </div>
         </div>
       )}

@@ -424,6 +424,15 @@ html {
   padding: 12px;
 }
 
+.modal-overlay-top {
+  align-items: flex-start;
+  padding-top: 50px;
+}
+
+.modal-top {
+  margin-top: 0;
+}
+
 .modal {
   background: var(--bg-panel);
   border-radius: 12px;
@@ -685,6 +694,7 @@ html {
   cursor: pointer;
   font-size: 0.9rem;
   font-weight: 500;
+  white-space: nowrap;
 }
 
 .crop-buttons button:last-child {
