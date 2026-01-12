@@ -928,8 +928,8 @@ function App() {
                 <div
                   className="crop-magnifier"
                   style={{
-                    left: Math.max(50, cropMagnifier.x - 70),
-                    top: Math.max(50, cropMagnifier.y - 70),
+                    left: 10,
+                    top: 10,
                   }}
                 >
                   <div
@@ -937,7 +937,7 @@ function App() {
                     style={{
                       backgroundImage: `url(${cropImage})`,
                       backgroundSize: `${(cropCanvasRef.current.querySelector('img')?.clientWidth || 200) * 3}px auto`,
-                      backgroundPosition: `${-cropMagnifier.x * 3 + 40}px ${-cropMagnifier.y * 3 + 40}px`
+                      backgroundPosition: `${-cropMagnifier.x * 3 + 45}px ${-cropMagnifier.y * 3 + 45}px`
                     }}
                   >
                     <div className="magnifier-crosshair" />
@@ -970,6 +970,7 @@ function App() {
         <div className="modal-overlay modal-overlay-top" onClick={() => setShowTextModal(false)}>
           <div className="modal modal-top" onClick={e => e.stopPropagation()}>
             <button className="close-btn" onClick={() => setShowTextModal(false)}>×</button>
+            <div style={{ height: '24px' }} />
             <input type="text" value={textInput} onChange={e => setTextInput(e.target.value)} placeholder="テキストを入力..." autoFocus />
             <div className="modal-row">
               <label>色</label>
@@ -990,6 +991,7 @@ function App() {
         <div className="modal-overlay modal-overlay-top" onClick={() => setShowSearchModal(false)}>
           <div className="modal modal-top" onClick={e => e.stopPropagation()}>
             <button className="close-btn" onClick={() => setShowSearchModal(false)}>×</button>
+            <div style={{ height: '24px' }} />
             <input
               type="text"
               value={searchQuery}
