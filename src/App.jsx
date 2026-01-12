@@ -123,7 +123,23 @@ function App() {
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 2000); };
 
   useEffect(() => {
-    getAllFromDB().then(list => setSavedList(list)).catch(console.error);
+    // Load last edited save on startup
+    const init = async () => {
+      const list = await getAllFromDB();
+      setSavedList(list);
+
+      const lastSaveName = localStorage.getItem('lastSaveName');
+      if (lastSaveName && list.some(s => s.id === lastSaveName)) {
+        const data = await loadFromDB(lastSaveName);
+        if (data) {
+          setItems(packItemsTight(data.items || [], window.innerWidth - 16));
+          setBgColor(data.bgColor || '#1a1a2e');
+          setBaseSize(data.baseSize || 100);
+          setCurrentSaveName(lastSaveName);
+        }
+      }
+    };
+    init().catch(console.error);
 
     const handleResize = () => {
       setCanvasWidth(window.innerWidth - 16);
@@ -399,10 +415,28 @@ function App() {
     const list = await getAllFromDB();
     setSavedList(list);
     setCurrentSaveName(saveName);
+    localStorage.setItem('lastSaveName', saveName);
     setShowSaveModal(false);
     setSaveName('');
     showToast('保存しました');
   };
+
+  // Overwrite save (auto-save)
+  const overwriteSave = async (silent = false) => {
+    if (!currentSaveName) return;
+    await saveToDB(currentSaveName, { items, bgColor, baseSize });
+    localStorage.setItem('lastSaveName', currentSaveName);
+    if (!silent) showToast('上書き保存しました');
+  };
+
+  // Auto-save after changes (debounced)
+  useEffect(() => {
+    if (!currentSaveName || items.length === 0) return;
+    const timer = setTimeout(() => {
+      overwriteSave(true);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [items, bgColor, baseSize, currentSaveName]);
 
   const loadCollage = async (name) => {
     const data = await loadFromDB(name);
@@ -411,6 +445,7 @@ function App() {
       setBgColor(data.bgColor || '#1a1a2e');
       setBaseSize(data.baseSize || 100);
       setCurrentSaveName(name);
+      localStorage.setItem('lastSaveName', name);
       setShowSaveDropdown(false);
       showToast('読み込みました');
     }
@@ -572,21 +607,27 @@ function App() {
     const baseHeight = baseSize;
     const baseWidth = baseHeight * aspectRatio;
 
-    setItems(prev => {
-      const updated = prev.map(i =>
-        i.id === cropItemId
-          ? { ...i, src: croppedUrl, baseWidth, baseHeight, aspectRatio }
-          : i
-      );
-      return packItemsTight(updated, canvasWidth);
-    });
+    // Add as new item (copy), keep original
+    const newItem = {
+      id: Date.now(),
+      type: 'image',
+      src: croppedUrl,
+      x: 0,
+      y: 0,
+      baseWidth,
+      baseHeight,
+      scale: 1,
+      aspectRatio
+    };
+
+    setItems(prev => packItemsTight([...prev, newItem], canvasWidth));
 
     setShowCropModal(false);
     setCropImage(null);
     setCropItemId(null);
     setCropStart(null);
     setCropEnd(null);
-    showToast('クロップしました');
+    showToast('クロップをコピーしました');
   };
 
   const canvasHeight = items.length > 0
@@ -630,7 +671,8 @@ function App() {
           <button onClick={() => setShowTextModal(true)} title="テキスト">✏️</button>
           <button onClick={() => setShowSearchModal(true)} title="検索">🔍</button>
           <button onClick={shuffleItems} title="シャッフル">🎲</button>
-          <button onClick={() => setShowSaveModal(true)} title="保存">💾</button>
+          <button onClick={() => setShowSaveModal(true)} title="新規保存">💾</button>
+          {currentSaveName && <button onClick={() => overwriteSave(false)} title="上書き保存">💾✓</button>}
           <button onClick={() => setShowSettings(!showSettings)} title="設定">⚙️</button>
           <input
             ref={fileInputRef}
@@ -702,8 +744,7 @@ function App() {
                 onDragStart={(e) => handleItemDragStart(e, item, index)}
                 onDragOver={(e) => handleItemDragOver(e, index)}
                 onDragEnd={handleItemDragEnd}
-                onClick={(e) => { e.stopPropagation(); setSelectedId(item.id); }}
-                onDoubleClick={() => { if (item.type === 'image') { setZoomImage(item.src); setZoomItemId(item.id); } }}
+                onClick={(e) => { e.stopPropagation(); if (item.type === 'image') { setZoomImage(item.src); setZoomItemId(item.id); } else { setSelectedId(item.id); } }}
               >
                 {item.type === 'image' ? (
                   <img src={item.src} alt="" draggable={false} />
