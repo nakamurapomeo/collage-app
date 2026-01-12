@@ -22,6 +22,12 @@ body {
   color: var(--text);
   min-height: 100vh;
   overflow-x: hidden;
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+html {
+  overscroll-behavior: none;
 }
 
 .app {
