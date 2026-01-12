@@ -355,12 +355,17 @@ function App() {
     setSelectedId(null);
   };
 
-  // Shuffle
+  // Shuffle - respects pinned items
   const shuffleItems = () => {
     if (items.length === 0) return;
-    const shuffled = [...items].sort(() => Math.random() - 0.5);
-    setItems(packItemsTight(shuffled, canvasWidth));
-    showToast('シャッフルしました');
+    // Separate pinned and unpinned items
+    const pinned = items.filter(i => i.pinned);
+    const unpinned = items.filter(i => !i.pinned);
+    // Shuffle each group separately
+    const shuffledPinned = [...pinned].sort(() => Math.random() - 0.5);
+    const shuffledUnpinned = [...unpinned].sort(() => Math.random() - 0.5);
+    // Combine: pinned first, then unpinned
+    setItems(packItemsTight([...shuffledPinned, ...shuffledUnpinned], canvasWidth));
   };
 
   // Add text
@@ -698,21 +703,20 @@ function App() {
     setCropEnd(null);
   };
 
-  // Long press to pin item to top
+  // Long press to toggle pin
   const handleItemTouchStart = (e, item) => {
     const timer = setTimeout(() => {
-      // Pin item to top of list
+      // Toggle pin status
       setItems(prev => {
-        const idx = prev.findIndex(i => i.id === item.id);
-        if (idx > 0) {
-          const newItems = [...prev];
-          const [pinned] = newItems.splice(idx, 1);
-          newItems.unshift(pinned);
-          return packItemsTight(newItems, canvasWidth);
-        }
-        return prev;
+        const updated = prev.map(i =>
+          i.id === item.id ? { ...i, pinned: !i.pinned } : i
+        );
+        // Sort: pinned items first
+        const pinned = updated.filter(i => i.pinned);
+        const unpinned = updated.filter(i => !i.pinned);
+        return packItemsTight([...pinned, ...unpinned], canvasWidth);
       });
-      showToast('上に固定しました');
+      showToast(item.pinned ? '固定解除' : '固定しました');
     }, 500);
     setLongPressTimer(timer);
   };
@@ -756,7 +760,6 @@ function App() {
   const handlePullEnd = () => {
     if (isPulling) {
       shuffleItems();
-      showToast('シャッフルしました');
     }
     setPullStartY(null);
     setIsPulling(false);
@@ -872,7 +875,7 @@ function App() {
             return (
               <div
                 key={item.id}
-                className={`item ${isSelected ? 'selected' : ''} ${isDragOver ? 'drag-over' : ''}`}
+                className={`item ${isSelected ? 'selected' : ''} ${isDragOver ? 'drag-over' : ''} ${item.pinned ? 'pinned' : ''}`}
                 style={{
                   left: item.x,
                   top: item.y,
@@ -887,6 +890,7 @@ function App() {
                 onTouchStart={(e) => handleItemTouchStart(e, item)}
                 onTouchEnd={handleItemTouchEnd}
               >
+                {item.pinned && <div className="pin-indicator">📌</div>}
                 {item.type === 'image' ? (
                   <img src={item.src} alt="" draggable={false} />
                 ) : (
