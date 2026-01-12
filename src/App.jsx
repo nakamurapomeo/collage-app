@@ -107,15 +107,15 @@ function App() {
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [baseSize, setBaseSize] = useState(100);
-  const [zoomImage, setZoomImage] = useState(null);
-  const [zoomItemId, setZoomItemId] = useState(null);
-  const [isScaling, setIsScaling] = useState(false);
   const [showCropModal, setShowCropModal] = useState(false);
   const [cropImage, setCropImage] = useState(null);
   const [cropItemId, setCropItemId] = useState(null);
   const [cropStart, setCropStart] = useState(null);
   const [cropEnd, setCropEnd] = useState(null);
   const [isCropping, setIsCropping] = useState(false);
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizeItemId, setResizeItemId] = useState(null);
+  const [longPressTimer, setLongPressTimer] = useState(null);
   const canvasRef = useRef(null);
   const fileInputRef = useRef(null);
   const cropCanvasRef = useRef(null);
@@ -538,14 +538,12 @@ function App() {
     }
   };
 
-  // Crop functions
+  // Crop functions - direct open
   const openCropEditor = (src, itemId) => {
     setCropImage(src);
     setCropItemId(itemId);
     setCropStart(null);
     setCropEnd(null);
-    setZoomImage(null);
-    setZoomItemId(null);
     setShowCropModal(true);
   };
 
@@ -570,8 +568,9 @@ function App() {
     setIsCropping(false);
   };
 
-  const applyCrop = async () => {
-    if (!cropStart || !cropEnd || !cropImage || !cropItemId) return;
+  // Process crop and get cropped data URL
+  const processCrop = async () => {
+    if (!cropStart || !cropEnd || !cropImage) return null;
 
     const img = new Image();
     img.crossOrigin = 'anonymous';
@@ -580,7 +579,7 @@ function App() {
     await new Promise(r => img.onload = r);
 
     const displayImg = cropCanvasRef.current?.querySelector('img');
-    if (!displayImg) return;
+    if (!displayImg) return null;
 
     const scaleX = img.naturalWidth / displayImg.clientWidth;
     const scaleY = img.naturalHeight / displayImg.clientHeight;
@@ -592,7 +591,7 @@ function App() {
 
     if (w < 10 || h < 10) {
       showToast('クロップ範囲が小さすぎます');
-      return;
+      return null;
     }
 
     const canvas = document.createElement('canvas');
@@ -601,33 +600,93 @@ function App() {
     const ctx = canvas.getContext('2d');
     ctx.drawImage(img, x1, y1, w, h, 0, 0, w, h);
 
-    const croppedUrl = canvas.toDataURL('image/jpeg', 0.9);
-    const dims = { width: w, height: h };
-    const aspectRatio = dims.width / dims.height;
-    const baseHeight = baseSize;
-    const baseWidth = baseHeight * aspectRatio;
+    return { url: canvas.toDataURL('image/jpeg', 0.9), width: w, height: h };
+  };
 
-    // Add as new item (copy), keep original
+  // Apply crop - replaces original
+  const applyCrop = async () => {
+    const result = await processCrop();
+    if (!result) return;
+
+    const aspectRatio = result.width / result.height;
+    const bh = baseSize;
+    const bw = bh * aspectRatio;
+
+    setItems(prev => {
+      const updated = prev.map(i =>
+        i.id === cropItemId
+          ? { ...i, src: result.url, baseWidth: bw, baseHeight: bh, aspectRatio }
+          : i
+      );
+      return packItemsTight(updated, canvasWidth);
+    });
+
+    closeCropModal();
+    showToast('クロップを適用しました');
+  };
+
+  // Copy crop - keeps original
+  const copyCrop = async () => {
+    const result = await processCrop();
+    if (!result) return;
+
+    const aspectRatio = result.width / result.height;
+    const bh = baseSize;
+    const bw = bh * aspectRatio;
+
     const newItem = {
       id: Date.now(),
       type: 'image',
-      src: croppedUrl,
+      src: result.url,
       x: 0,
       y: 0,
-      baseWidth,
-      baseHeight,
+      baseWidth: bw,
+      baseHeight: bh,
       scale: 1,
       aspectRatio
     };
 
     setItems(prev => packItemsTight([...prev, newItem], canvasWidth));
+    closeCropModal();
+    showToast('クロップをコピーしました');
+  };
 
+  const closeCropModal = () => {
     setShowCropModal(false);
     setCropImage(null);
     setCropItemId(null);
     setCropStart(null);
     setCropEnd(null);
-    showToast('クロップをコピーしました');
+  };
+
+  // Long press handlers for resize mode
+  const handleItemTouchStart = (e, item) => {
+    const timer = setTimeout(() => {
+      setSelectedId(item.id);
+      setResizeItemId(item.id);
+      showToast('リサイズモード: 端をドラッグ');
+    }, 500);
+    setLongPressTimer(timer);
+  };
+
+  const handleItemTouchEnd = () => {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      setLongPressTimer(null);
+    }
+  };
+
+  const handleItemClick = (e, item) => {
+    e.stopPropagation();
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      setLongPressTimer(null);
+    }
+    if (item.type === 'image') {
+      openCropEditor(item.src, item.id);
+    } else {
+      setSelectedId(item.id);
+    }
   };
 
   const canvasHeight = items.length > 0
@@ -733,18 +792,20 @@ function App() {
             return (
               <div
                 key={item.id}
-                className={`item ${isSelected ? 'selected' : ''} ${isDragOver ? 'drag-over' : ''}`}
+                className={`item ${isSelected ? 'selected' : ''} ${isDragOver ? 'drag-over' : ''} ${resizeItemId === item.id ? 'resize-mode' : ''}`}
                 style={{
                   left: item.x,
                   top: item.y,
                   width: scaledWidth,
                   height: scaledHeight
                 }}
-                draggable={!isScaling}
+                draggable={!resizeItemId}
                 onDragStart={(e) => handleItemDragStart(e, item, index)}
                 onDragOver={(e) => handleItemDragOver(e, index)}
                 onDragEnd={handleItemDragEnd}
-                onClick={(e) => { e.stopPropagation(); if (item.type === 'image') { setZoomImage(item.src); setZoomItemId(item.id); } else { setSelectedId(item.id); } }}
+                onClick={(e) => handleItemClick(e, item)}
+                onTouchStart={(e) => handleItemTouchStart(e, item)}
+                onTouchEnd={handleItemTouchEnd}
               >
                 {item.type === 'image' ? (
                   <img src={item.src} alt="" draggable={false} />
@@ -752,6 +813,45 @@ function App() {
                   <div className="text-item" style={{ color: item.color, fontSize: item.fontSize * (item.scale || 1) }}>
                     {item.text}
                   </div>
+                )}
+                {resizeItemId === item.id && (
+                  <div
+                    className="resize-handle"
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      const startX = e.clientX;
+                      const startScale = item.scale || 1;
+                      const onMove = (moveE) => {
+                        const diff = (moveE.clientX - startX) / 100;
+                        const newScale = Math.max(0.3, Math.min(3, startScale + diff));
+                        updateScale(item.id, newScale);
+                      };
+                      const onUp = () => {
+                        document.removeEventListener('mousemove', onMove);
+                        document.removeEventListener('mouseup', onUp);
+                        setResizeItemId(null);
+                      };
+                      document.addEventListener('mousemove', onMove);
+                      document.addEventListener('mouseup', onUp);
+                    }}
+                    onTouchStart={(e) => {
+                      e.stopPropagation();
+                      const startX = e.touches[0].clientX;
+                      const startScale = item.scale || 1;
+                      const onMove = (moveE) => {
+                        const diff = (moveE.touches[0].clientX - startX) / 100;
+                        const newScale = Math.max(0.3, Math.min(3, startScale + diff));
+                        updateScale(item.id, newScale);
+                      };
+                      const onEnd = () => {
+                        document.removeEventListener('touchmove', onMove);
+                        document.removeEventListener('touchend', onEnd);
+                        setResizeItemId(null);
+                      };
+                      document.addEventListener('touchmove', onMove);
+                      document.addEventListener('touchend', onEnd);
+                    }}
+                  />
                 )}
               </div>
             );
@@ -783,22 +883,11 @@ function App() {
         )}
       </div>
 
-      {/* Zoom Modal */}
-      {zoomImage && (
-        <div className="modal-overlay" onClick={() => { setZoomImage(null); setZoomItemId(null); }}>
-          <div className="zoom-modal" onClick={e => e.stopPropagation()}>
-            <button className="close-btn" onClick={() => { setZoomImage(null); setZoomItemId(null); }}>×</button>
-            <img src={zoomImage} alt="zoomed" />
-            <button className="edit-btn" onClick={() => openCropEditor(zoomImage, zoomItemId)}>✂️ クロップ</button>
-          </div>
-        </div>
-      )}
-
       {/* Crop Modal */}
       {showCropModal && cropImage && (
-        <div className="modal-overlay" onClick={() => setShowCropModal(false)}>
+        <div className="modal-overlay" onClick={closeCropModal}>
           <div className="crop-modal" onClick={e => e.stopPropagation()}>
-            <button className="close-btn" onClick={() => setShowCropModal(false)}>×</button>
+            <button className="close-btn" onClick={closeCropModal}>×</button>
             <h2>✂️ クロップ</h2>
             <p className="crop-hint">ドラッグで範囲を選択</p>
             <div
@@ -825,7 +914,10 @@ function App() {
                 />
               )}
             </div>
-            <button onClick={applyCrop} disabled={!cropStart || !cropEnd}>適用</button>
+            <div className="crop-buttons">
+              <button onClick={applyCrop} disabled={!cropStart || !cropEnd}>適用</button>
+              <button onClick={copyCrop} disabled={!cropStart || !cropEnd}>コピー</button>
+            </div>
           </div>
         </div>
       )}

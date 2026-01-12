@@ -669,21 +669,58 @@ html {
   pointer-events: none;
 }
 
-.crop-modal>button {
+.crop-buttons {
+  display: flex;
+  gap: 10px;
   margin-top: 12px;
+}
+
+.crop-buttons button {
+  flex: 1;
   background: linear-gradient(135deg, var(--accent), #a855f7);
   color: white;
   border: none;
-  padding: 10px 24px;
+  padding: 10px 16px;
   border-radius: 8px;
   cursor: pointer;
   font-size: 0.9rem;
   font-weight: 500;
 }
 
-.crop-modal>button:disabled {
+.crop-buttons button:last-child {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+}
+
+.crop-buttons button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Resize mode */
+.item.resize-mode {
+  outline: 3px solid #22c55e;
+  z-index: 150 !important;
+}
+
+.resize-handle {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  width: 24px;
+  height: 24px;
+  background: #22c55e;
+  border-radius: 50%;
+  cursor: se-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.resize-handle::after {
+  content: '↘';
+  color: white;
+  font-size: 12px;
 }
 
 /* Responsive */
