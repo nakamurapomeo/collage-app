@@ -723,6 +723,59 @@ html {
   font-size: 12px;
 }
 
+/* Crop Magnifier */
+.crop-magnifier {
+  position: absolute;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: 3px solid #22c55e;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  background-size: 200%;
+  background-repeat: no-repeat;
+  pointer-events: none;
+  transform: translate(-50%, -100%);
+  z-index: 100;
+}
+
+/* Search Buttons */
+.search-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.search-buttons button {
+  flex: 1;
+  background: var(--bg-card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.search-buttons button:hover {
+  background: var(--accent);
+}
+
+.search-buttons button:first-child:hover {
+  background: #4285f4;
+}
+
+.search-buttons button:last-child:hover {
+  background: #de5833;
+}
+
+/* Settings Checkbox */
+.settings-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+
 /* Responsive */
 @media (max-width: 380px) {
   .header {

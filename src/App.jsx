@@ -113,9 +113,11 @@ function App() {
   const [cropStart, setCropStart] = useState(null);
   const [cropEnd, setCropEnd] = useState(null);
   const [isCropping, setIsCropping] = useState(false);
+  const [cropMagnifier, setCropMagnifier] = useState(null);
   const [isResizing, setIsResizing] = useState(false);
   const [resizeItemId, setResizeItemId] = useState(null);
   const [longPressTimer, setLongPressTimer] = useState(null);
+  const [pinchZoomEnabled, setPinchZoomEnabled] = useState(() => localStorage.getItem('pinchZoom') !== 'false');
   const canvasRef = useRef(null);
   const fileInputRef = useRef(null);
   const cropCanvasRef = useRef(null);
@@ -344,34 +346,19 @@ function App() {
     showToast('テキストを追加しました');
   };
 
-  // Pixabay API for in-app image search
-  const PIXABAY_API_KEY = '47501194-e0373ebfe04c1c4f3e1d42b34'; // Free public demo key
-
-  const searchPixabay = async () => {
+  // Browser-based image search
+  const openGoogleImageSearch = () => {
     if (!searchQuery.trim()) return;
-    setIsSearching(true);
-    try {
-      const response = await fetch(
-        `https://pixabay.com/api/?key=${PIXABAY_API_KEY}&q=${encodeURIComponent(searchQuery)}&image_type=photo&per_page=15&safesearch=true`
-      );
-      const data = await response.json();
-      if (data.hits && data.hits.length > 0) {
-        const results = data.hits.map((hit, i) => ({
-          id: `pixabay-${hit.id}-${i}`,
-          thumb: hit.previewURL,
-          full: hit.webformatURL,
-          alt: hit.tags || searchQuery
-        }));
-        setSearchResults(results);
-      } else {
-        setSearchResults([]);
-        showToast('画像が見つかりませんでした');
-      }
-    } catch (err) {
-      console.error('Pixabay search error:', err);
-      showToast('検索に失敗しました');
-    }
-    setIsSearching(false);
+    window.open(`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(searchQuery)}`, '_blank');
+    setShowSearchModal(false);
+    showToast('Googleで画像検索を開きました');
+  };
+
+  const openDuckDuckGoImageSearch = () => {
+    if (!searchQuery.trim()) return;
+    window.open(`https://duckduckgo.com/?q=${encodeURIComponent(searchQuery)}&iax=images&ia=images`, '_blank');
+    setShowSearchModal(false);
+    showToast('DuckDuckGoで画像検索を開きました');
   };
 
   const addSearchResult = async (result) => {
@@ -549,23 +536,36 @@ function App() {
 
   const handleCropStart = (e) => {
     const rect = e.currentTarget.getBoundingClientRect();
-    const x = (e.clientX || e.touches?.[0]?.clientX) - rect.left;
-    const y = (e.clientY || e.touches?.[0]?.clientY) - rect.top;
+    const clientX = e.clientX || e.touches?.[0]?.clientX;
+    const clientY = e.clientY || e.touches?.[0]?.clientY;
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
     setCropStart({ x, y });
     setCropEnd({ x, y });
     setIsCropping(true);
+    // Show magnifier on mobile
+    if (e.touches) {
+      setCropMagnifier({ x, y, clientX, clientY });
+    }
   };
 
   const handleCropMove = (e) => {
     if (!isCropping) return;
     const rect = e.currentTarget.getBoundingClientRect();
-    const x = Math.max(0, Math.min((e.clientX || e.touches?.[0]?.clientX) - rect.left, rect.width));
-    const y = Math.max(0, Math.min((e.clientY || e.touches?.[0]?.clientY) - rect.top, rect.height));
+    const clientX = e.clientX || e.touches?.[0]?.clientX;
+    const clientY = e.clientY || e.touches?.[0]?.clientY;
+    const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
+    const y = Math.max(0, Math.min(clientY - rect.top, rect.height));
     setCropEnd({ x, y });
+    // Update magnifier
+    if (e.touches) {
+      setCropMagnifier({ x, y, clientX, clientY });
+    }
   };
 
   const handleCropEnd = () => {
     setIsCropping(false);
+    setCropMagnifier(null);
   };
 
   // Process crop and get cropped data URL
@@ -756,6 +756,17 @@ function App() {
             <input type="color" value={bgColor} onChange={e => setBgColor(e.target.value)} />
           </div>
           <div className="settings-row">
+            <label>ピンチ</label>
+            <input
+              type="checkbox"
+              checked={pinchZoomEnabled}
+              onChange={e => {
+                setPinchZoomEnabled(e.target.checked);
+                localStorage.setItem('pinchZoom', e.target.checked);
+              }}
+            />
+          </div>
+          <div className="settings-row">
             <button onClick={packItems}>📦 詰める</button>
             <button onClick={exportZip}>📤 出力</button>
             <label className="file-btn">
@@ -913,6 +924,17 @@ function App() {
                   }}
                 />
               )}
+              {cropMagnifier && (
+                <div
+                  className="crop-magnifier"
+                  style={{
+                    left: cropMagnifier.x,
+                    top: Math.max(0, cropMagnifier.y - 100),
+                    backgroundImage: `url(${cropImage})`,
+                    backgroundPosition: `${-cropMagnifier.x * 2 + 40}px ${-cropMagnifier.y * 2 + 40}px`
+                  }}
+                />
+              )}
             </div>
             <div className="crop-buttons">
               <button onClick={applyCrop} disabled={!cropStart || !cropEnd}>適用</button>
@@ -958,32 +980,21 @@ function App() {
       {/* Search Modal */}
       {showSearchModal && (
         <div className="modal-overlay" onClick={() => setShowSearchModal(false)}>
-          <div className="modal modal-wide" onClick={e => e.stopPropagation()}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
             <button className="close-btn" onClick={() => setShowSearchModal(false)}>×</button>
             <h2>🔍 画像検索</h2>
-            <div className="search-input-row">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                placeholder="検索ワード（英語推奨）..."
-                autoFocus
-                onKeyDown={e => e.key === 'Enter' && searchPixabay()}
-              />
-              <button onClick={searchPixabay} disabled={isSearching} className="search-btn">
-                {isSearching ? '...' : '検索'}
-              </button>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="検索ワード..."
+              autoFocus
+            />
+            <div className="search-buttons">
+              <button onClick={openGoogleImageSearch}>🔍 Google</button>
+              <button onClick={openDuckDuckGoImageSearch}>🦆 DuckDuckGo</button>
             </div>
-            {searchResults.length > 0 && (
-              <div className="search-results">
-                {searchResults.map(r => (
-                  <div key={r.id} className="search-result" onClick={() => addSearchResult(r)}>
-                    <img src={r.thumb} alt={r.alt} />
-                  </div>
-                ))}
-              </div>
-            )}
-            <p className="search-note">Powered by Pixabay</p>
+            <p className="search-note">ブラウザで開いた画像は長押し保存→📁から追加</p>
           </div>
         </div>
       )}
