@@ -272,6 +272,32 @@ html {
   align-items: center;
   overflow: auto;
   padding-bottom: 60px;
+  position: relative;
+}
+
+.pull-indicator {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, var(--accent), #a855f7);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 0 0 12px 12px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  z-index: 100;
+  animation: pullBounce 0.3s ease;
+}
+
+@keyframes pullBounce {
+  0% {
+    transform: translateX(-50%) translateY(-100%);
+  }
+
+  100% {
+    transform: translateX(-50%) translateY(0);
+  }
 }
 
 /* Canvas */

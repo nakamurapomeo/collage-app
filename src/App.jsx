@@ -114,13 +114,13 @@ function App() {
   const [cropEnd, setCropEnd] = useState(null);
   const [isCropping, setIsCropping] = useState(false);
   const [cropMagnifier, setCropMagnifier] = useState(null);
-  const [isResizing, setIsResizing] = useState(false);
-  const [resizeItemId, setResizeItemId] = useState(null);
   const [longPressTimer, setLongPressTimer] = useState(null);
-  const [pinchZoomEnabled, setPinchZoomEnabled] = useState(() => localStorage.getItem('pinchZoom') !== 'false');
+  const [pullStartY, setPullStartY] = useState(null);
+  const [isPulling, setIsPulling] = useState(false);
   const canvasRef = useRef(null);
   const fileInputRef = useRef(null);
   const cropCanvasRef = useRef(null);
+  const mainContentRef = useRef(null);
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 2000); };
 
@@ -698,12 +698,21 @@ function App() {
     setCropEnd(null);
   };
 
-  // Long press handlers for resize mode
+  // Long press to pin item to top
   const handleItemTouchStart = (e, item) => {
     const timer = setTimeout(() => {
-      setSelectedId(item.id);
-      setResizeItemId(item.id);
-      showToast('リサイズモード: 端をドラッグ');
+      // Pin item to top of list
+      setItems(prev => {
+        const idx = prev.findIndex(i => i.id === item.id);
+        if (idx > 0) {
+          const newItems = [...prev];
+          const [pinned] = newItems.splice(idx, 1);
+          newItems.unshift(pinned);
+          return packItemsTight(newItems, canvasWidth);
+        }
+        return prev;
+      });
+      showToast('上に固定しました');
     }, 500);
     setLongPressTimer(timer);
   };
@@ -726,6 +735,31 @@ function App() {
     } else {
       setSelectedId(item.id);
     }
+  };
+
+  // Pull-to-shuffle handlers
+  const handlePullStart = (e) => {
+    if (mainContentRef.current && mainContentRef.current.scrollTop === 0) {
+      setPullStartY(e.touches[0].clientY);
+    }
+  };
+
+  const handlePullMove = (e) => {
+    if (pullStartY !== null) {
+      const diff = e.touches[0].clientY - pullStartY;
+      if (diff > 50) {
+        setIsPulling(true);
+      }
+    }
+  };
+
+  const handlePullEnd = () => {
+    if (isPulling) {
+      shuffleItems();
+      showToast('シャッフルしました');
+    }
+    setPullStartY(null);
+    setIsPulling(false);
   };
 
   const canvasHeight = items.length > 0
@@ -795,17 +829,6 @@ function App() {
             <input type="color" value={bgColor} onChange={e => setBgColor(e.target.value)} />
           </div>
           <div className="settings-row">
-            <label>ピンチ</label>
-            <input
-              type="checkbox"
-              checked={pinchZoomEnabled}
-              onChange={e => {
-                setPinchZoomEnabled(e.target.checked);
-                localStorage.setItem('pinchZoom', e.target.checked);
-              }}
-            />
-          </div>
-          <div className="settings-row">
             <button onClick={packItems}>📦 詰める</button>
             <button onClick={exportZip}>📤 出力</button>
             <label className="file-btn">
@@ -817,7 +840,14 @@ function App() {
         </div>
       )}
 
-      <div className="main-content">
+      <div
+        className="main-content"
+        ref={mainContentRef}
+        onTouchStart={handlePullStart}
+        onTouchMove={handlePullMove}
+        onTouchEnd={handlePullEnd}
+      >
+        {isPulling && <div className="pull-indicator">⬇️ シャッフル</div>}
         <div
           ref={canvasRef}
           className={`canvas ${isDragging ? 'dragging' : ''}`}
@@ -842,14 +872,14 @@ function App() {
             return (
               <div
                 key={item.id}
-                className={`item ${isSelected ? 'selected' : ''} ${isDragOver ? 'drag-over' : ''} ${resizeItemId === item.id ? 'resize-mode' : ''}`}
+                className={`item ${isSelected ? 'selected' : ''} ${isDragOver ? 'drag-over' : ''}`}
                 style={{
                   left: item.x,
                   top: item.y,
                   width: scaledWidth,
                   height: scaledHeight
                 }}
-                draggable={!resizeItemId}
+                draggable
                 onDragStart={(e) => handleItemDragStart(e, item, index)}
                 onDragOver={(e) => handleItemDragOver(e, index)}
                 onDragEnd={handleItemDragEnd}
@@ -863,45 +893,6 @@ function App() {
                   <div className="text-item" style={{ color: item.color, fontSize: item.fontSize * (item.scale || 1) }}>
                     {item.text}
                   </div>
-                )}
-                {resizeItemId === item.id && (
-                  <div
-                    className="resize-handle"
-                    onMouseDown={(e) => {
-                      e.stopPropagation();
-                      const startX = e.clientX;
-                      const startScale = item.scale || 1;
-                      const onMove = (moveE) => {
-                        const diff = (moveE.clientX - startX) / 100;
-                        const newScale = Math.max(0.3, Math.min(3, startScale + diff));
-                        updateScale(item.id, newScale);
-                      };
-                      const onUp = () => {
-                        document.removeEventListener('mousemove', onMove);
-                        document.removeEventListener('mouseup', onUp);
-                        setResizeItemId(null);
-                      };
-                      document.addEventListener('mousemove', onMove);
-                      document.addEventListener('mouseup', onUp);
-                    }}
-                    onTouchStart={(e) => {
-                      e.stopPropagation();
-                      const startX = e.touches[0].clientX;
-                      const startScale = item.scale || 1;
-                      const onMove = (moveE) => {
-                        const diff = (moveE.touches[0].clientX - startX) / 100;
-                        const newScale = Math.max(0.3, Math.min(3, startScale + diff));
-                        updateScale(item.id, newScale);
-                      };
-                      const onEnd = () => {
-                        document.removeEventListener('touchmove', onMove);
-                        document.removeEventListener('touchend', onEnd);
-                        setResizeItemId(null);
-                      };
-                      document.addEventListener('touchmove', onMove);
-                      document.addEventListener('touchend', onEnd);
-                    }}
-                  />
                 )}
               </div>
             );
