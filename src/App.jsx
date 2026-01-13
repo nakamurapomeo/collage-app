@@ -160,6 +160,8 @@ function App() {
   const [syncPassword, setSyncPassword] = useState(() => localStorage.getItem('syncPassword') || '');
   const [cloudSaves, setCloudSaves] = useState([]);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [selectedItems, setSelectedItems] = useState([]);
   const canvasRef = useRef(null);
   const fileInputRef = useRef(null);
   const cropCanvasRef = useRef(null);
@@ -952,39 +954,12 @@ function App() {
       {toast && <div className="toast">{toast}</div>}
 
       <header className="header">
-        <div className="save-dropdown-wrapper">
-          <button
-            className="current-save-btn"
-            onClick={() => { getAllFromDB().then(setSavedList); setShowSaveDropdown(!showSaveDropdown); }}
-          >
-            📄 {currentSaveName || '(未保存)'}
-            <span className="dropdown-arrow">▼</span>
-          </button>
-          {showSaveDropdown && (
-            <div className="save-dropdown">
-              <button className="close-btn" onClick={() => setShowSaveDropdown(false)}>×</button>
-              <div className="dropdown-title">保存データ</div>
-              {savedList.length === 0 ? (
-                <div className="dropdown-empty">データなし</div>
-              ) : (
-                savedList.map(s => (
-                  <div key={s.id} className="dropdown-item">
-                    <span onClick={() => loadCollage(s.id)}>{s.id}</span>
-                    <button onClick={(e) => { e.stopPropagation(); deleteSaved(s.id); }}>×</button>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
-        </div>
-        <div className="header-buttons">
+        <div className="header-row-1">
           <button onClick={() => fileInputRef.current.click()} title="画像追加">📁</button>
           <button onClick={() => setShowTextModal(true)} title="テキスト">✏️</button>
           <button onClick={() => setShowSearchModal(true)} title="検索">🔍</button>
           <button onClick={shuffleItems} title="シャッフル">🎲</button>
-          <button onClick={() => setShowSaveModal(true)} title="新規保存">💾</button>
-          {currentSaveName && <button onClick={() => overwriteSave(false)} title="上書き保存">💾✓</button>}
-          <button onClick={() => { setShowCloudModal(true); fetchCloudSaves(); }} title="クラウド同期">☁️</button>
+          <button onClick={() => setEditMode(!editMode)} title="編集モード" className={editMode ? 'active' : ''}>✅</button>
           <button onClick={() => setShowSettings(!showSettings)} title="設定">⚙️</button>
           <input
             ref={fileInputRef}
@@ -995,10 +970,51 @@ function App() {
             onChange={handleFileSelect}
           />
         </div>
+        <div className="header-row-2">
+          <div className="save-dropdown-wrapper">
+            <button
+              className="current-save-btn"
+              onClick={() => { getAllFromDB().then(setSavedList); setShowSaveDropdown(!showSaveDropdown); }}
+            >
+              📄 {currentSaveName || '(未保存)'}
+              <span className="dropdown-arrow">▼</span>
+            </button>
+            {showSaveDropdown && (
+              <div className="save-dropdown">
+                <button className="close-btn" onClick={() => setShowSaveDropdown(false)}>×</button>
+                <div className="dropdown-title">保存データ</div>
+                {savedList.length === 0 ? (
+                  <div className="dropdown-empty">データなし</div>
+                ) : (
+                  savedList.map(s => (
+                    <div key={s.id} className="dropdown-item">
+                      <span onClick={() => loadCollage(s.id)}>{s.id}</span>
+                      <button onClick={(e) => { e.stopPropagation(); deleteSaved(s.id); }}>×</button>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+          <button onClick={() => setShowSaveModal(true)} title="新規保存">💾</button>
+          {currentSaveName && <button onClick={() => overwriteSave(false)} title="上書き保存">💾✓</button>}
+          <button onClick={() => { setShowCloudModal(true); fetchCloudSaves(); }} title="クラウド同期">☁️</button>
+        </div>
       </header>
 
       {showSettings && (
         <div className="settings-panel">
+          <div className="settings-row">
+            <label>パスキー</label>
+            <input
+              type="password"
+              value={syncPassword}
+              onChange={e => saveSyncPassword(e.target.value)}
+              placeholder="クラウド同期用..."
+              style={{ width: '100px' }}
+            />
+            {syncPassword && <span style={{ color: '#22c55e', fontSize: '0.7rem' }}>✓同期ON</span>}
+          </div>
           <div className="settings-row">
             <label>サイズ</label>
             <input type="range" min="50" max="200" value={baseSize} onChange={e => setBaseSize(+e.target.value)} />
