@@ -195,23 +195,6 @@ function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Auto cloud sync - upload when items change (debounced)
-  useEffect(() => {
-    if (!syncPassword || items.length === 0) return;
-
-    const saveToCloud = async () => {
-      try {
-        const zipBlob = await createZipBlob();
-        await cloudUpload(currentSaveName || 'auto', zipBlob, syncPassword);
-      } catch (err) {
-        console.error('Auto sync error:', err);
-      }
-    };
-
-    const timer = setTimeout(saveToCloud, 5000); // 5秒後に自動保存
-    return () => clearTimeout(timer);
-  }, [items, syncPassword, currentSaveName]);
-
   // Justified row layout - zero gap masonry like FStop/Google Photos
   const packItemsTight = useCallback((itemList, containerWidth) => {
     if (itemList.length === 0) return [];
@@ -512,22 +495,45 @@ function App() {
     setShowSaveModal(false);
     setSaveName('');
     showToast('保存しました');
+
+    // Also save to cloud if passkey is set
+    if (syncPassword) {
+      try {
+        const zipBlob = await createZipBlob();
+        await cloudUpload(saveName, zipBlob, syncPassword);
+      } catch (err) {
+        console.error('Cloud save error:', err);
+      }
+    }
   };
 
-  // Overwrite save (auto-save)
+  // Overwrite save (auto-save) - saves to local + cloud
   const overwriteSave = async (silent = false) => {
     if (!currentSaveName) return;
+
+    // Save locally
     await saveToDB(currentSaveName, { items, bgColor, baseSize });
     localStorage.setItem('lastSaveName', currentSaveName);
-    if (!silent) showToast('上書き保存しました');
+
+    // Save to cloud if passkey is set
+    if (syncPassword) {
+      try {
+        const zipBlob = await createZipBlob();
+        await cloudUpload(currentSaveName, zipBlob, syncPassword);
+      } catch (err) {
+        console.error('Cloud sync error:', err);
+      }
+    }
+
+    if (!silent) showToast('保存しました');
   };
 
-  // Auto-save after changes (debounced)
+  // Auto-save after changes (debounced) - saves to local + cloud
   useEffect(() => {
     if (!currentSaveName || items.length === 0) return;
     const timer = setTimeout(() => {
       overwriteSave(true);
-    }, 2000);
+    }, 3000); // 3秒後に自動保存
     return () => clearTimeout(timer);
   }, [items, bgColor, baseSize, currentSaveName]);
 
@@ -912,11 +918,37 @@ function App() {
       clearTimeout(longPressTimer);
       setLongPressTimer(null);
     }
+
+    // Edit mode: toggle selection
+    if (editMode) {
+      setSelectedItems(prev =>
+        prev.includes(item.id)
+          ? prev.filter(id => id !== item.id)
+          : [...prev, item.id]
+      );
+      return;
+    }
+
     if (item.type === 'image') {
       openCropEditor(item.src, item.id);
     } else {
       setSelectedId(item.id);
     }
+  };
+
+  // Delete selected items (edit mode)
+  const deleteSelectedItems = () => {
+    if (selectedItems.length === 0) return;
+    if (!confirm(`${selectedItems.length}個のアイテムを削除しますか？`)) return;
+    setItems(prev => packItemsTight(prev.filter(i => !selectedItems.includes(i.id)), canvasWidth));
+    setSelectedItems([]);
+    showToast(`${selectedItems.length}個削除しました`);
+  };
+
+  // Exit edit mode
+  const exitEditMode = () => {
+    setEditMode(false);
+    setSelectedItems([]);
   };
 
   // Pull-to-shuffle handlers
@@ -1036,6 +1068,17 @@ function App() {
         </div>
       )}
 
+      {/* Edit Mode Controls */}
+      {editMode && (
+        <div className="edit-mode-bar">
+          <span>{selectedItems.length}個選択中</span>
+          <button onClick={deleteSelectedItems} disabled={selectedItems.length === 0} className="btn-danger">
+            🗑️ 削除
+          </button>
+          <button onClick={exitEditMode}>✕ 終了</button>
+        </div>
+      )}
+
       <div
         className="main-content"
         ref={mainContentRef}
@@ -1064,11 +1107,12 @@ function App() {
             const scaledHeight = Math.floor((item.baseHeight || 100) * (item.scale || 1));
             const isSelected = selectedId === item.id;
             const isDragOver = dragOverIndex === index;
+            const isEditSelected = editMode && selectedItems.includes(item.id);
 
             return (
               <div
                 key={item.id}
-                className={`item ${isSelected ? 'selected' : ''} ${isDragOver ? 'drag-over' : ''} ${item.pinned ? 'pinned' : ''}`}
+                className={`item ${isSelected ? 'selected' : ''} ${isDragOver ? 'drag-over' : ''} ${item.pinned ? 'pinned' : ''} ${isEditSelected ? 'edit-selected' : ''}`}
                 style={{
                   left: item.x,
                   top: item.y,
