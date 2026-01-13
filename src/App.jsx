@@ -876,7 +876,7 @@ function App() {
         return packItemsTight([...pinned, ...unpinned], canvasWidth);
       });
       showToast(item.pinned ? '固定解除' : '固定しました');
-    }, 500);
+    }, 800);
     setLongPressTimer(timer);
   };
 
@@ -1117,26 +1117,6 @@ function App() {
                     height: Math.abs(cropEnd.y - cropStart.y)
                   }}
                 />
-              )}
-              {cropMagnifier && cropCanvasRef.current && (
-                <div
-                  className="crop-magnifier"
-                  style={{
-                    left: 10,
-                    top: 10,
-                  }}
-                >
-                  <div
-                    className="magnifier-content"
-                    style={{
-                      backgroundImage: `url(${cropImage})`,
-                      backgroundSize: `${(cropCanvasRef.current.querySelector('img')?.clientWidth || 200) * 3}px auto`,
-                      backgroundPosition: `${-cropMagnifier.x * 3 + 45}px ${-cropMagnifier.y * 3 + 45}px`
-                    }}
-                  >
-                    <div className="magnifier-crosshair" />
-                  </div>
-                </div>
               )}
             </div>
             <div className="crop-buttons">

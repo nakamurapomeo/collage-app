@@ -74,6 +74,8 @@ html {
   background: linear-gradient(to right, var(--bg-panel), var(--bg-card));
   border-bottom: 1px solid var(--border);
   gap: 6px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* Save Dropdown */
@@ -181,6 +183,9 @@ html {
 .header-buttons {
   display: flex;
   gap: 3px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  flex-shrink: 0;
 }
 
 .header-buttons button {
@@ -525,6 +530,25 @@ html {
 
 .modal>button:hover {
   transform: translateY(-1px);
+}
+
+/* Close button - top right of all modals */
+.close-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  line-height: 1;
+  z-index: 10;
+}
+
+.close-btn:hover {
+  color: var(--text);
 }
 
 .modal-row {
