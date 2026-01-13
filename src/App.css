@@ -183,9 +183,14 @@ html {
 .header-buttons {
   display: flex;
   gap: 3px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  flex-shrink: 0;
+  flex-shrink: 1;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.header-buttons::-webkit-scrollbar {
+  display: none;
 }
 
 .header-buttons button {

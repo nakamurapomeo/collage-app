@@ -193,6 +193,23 @@ function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Auto cloud sync - upload when items change (debounced)
+  useEffect(() => {
+    if (!syncPassword || items.length === 0) return;
+
+    const saveToCloud = async () => {
+      try {
+        const zipBlob = await createZipBlob();
+        await cloudUpload(currentSaveName || 'auto', zipBlob, syncPassword);
+      } catch (err) {
+        console.error('Auto sync error:', err);
+      }
+    };
+
+    const timer = setTimeout(saveToCloud, 5000); // 5秒後に自動保存
+    return () => clearTimeout(timer);
+  }, [items, syncPassword, currentSaveName]);
+
   // Justified row layout - zero gap masonry like FStop/Google Photos
   const packItemsTight = useCallback((itemList, containerWidth) => {
     if (itemList.length === 0) return [];
@@ -1129,10 +1146,10 @@ function App() {
 
       {/* Save Modal */}
       {showSaveModal && (
-        <div className="modal-overlay" onClick={() => setShowSaveModal(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-overlay modal-overlay-top" onClick={() => setShowSaveModal(false)}>
+          <div className="modal modal-top" onClick={e => e.stopPropagation()}>
             <button className="close-btn" onClick={() => setShowSaveModal(false)}>×</button>
-            <h2>💾 保存</h2>
+            <div style={{ height: '24px' }} />
             <input type="text" value={saveName} onChange={e => setSaveName(e.target.value)} placeholder="保存名..." autoFocus />
             <button onClick={saveCollage}>保存</button>
           </div>
@@ -1184,28 +1201,25 @@ function App() {
 
       {/* Cloud Sync Modal */}
       {showCloudModal && (
-        <div className="modal-overlay" onClick={() => setShowCloudModal(false)}>
-          <div className="modal modal-wide" onClick={e => e.stopPropagation()}>
+        <div className="modal-overlay modal-overlay-top" onClick={() => setShowCloudModal(false)}>
+          <div className="modal modal-top modal-wide" onClick={e => e.stopPropagation()}>
             <button className="close-btn" onClick={() => setShowCloudModal(false)}>×</button>
-            <h2>☁️ クラウド同期</h2>
-
-            <div className="modal-row">
-              <label>パスワード</label>
-              <input
-                type="password"
-                value={syncPassword}
-                onChange={e => saveSyncPassword(e.target.value)}
-                placeholder="同期パスワード..."
-              />
-            </div>
+            <div style={{ height: '24px' }} />
+            <input
+              type="password"
+              value={syncPassword}
+              onChange={e => saveSyncPassword(e.target.value)}
+              placeholder="同期パスワード..."
+              autoFocus
+            />
 
             <div className="cloud-actions">
               <button
-                onClick={uploadToCloud}
-                disabled={isSyncing || !currentSaveName}
-                className="cloud-btn upload"
+                onClick={() => downloadFromCloud(currentSaveName || 'default')}
+                disabled={isSyncing || !syncPassword}
+                className="cloud-btn"
               >
-                {isSyncing ? '...' : '⬆️ アップロード'}
+                {isSyncing ? '...' : '⬇️ クラウドから読み込み'}
               </button>
             </div>
 
