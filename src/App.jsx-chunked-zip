@@ -1,0 +1,189 @@
+
+// Cloud Upload - Full Zip (Chunked)
+const cloudUpload = async (backupData, password, onProgress) => {
+  console.log('Starting cloudUpload (Full Zip + Chunking)...');
+
+  // 1. Create Zip
+  const zip = new JSZip();
+  const metaSets = [];
+
+  let totalImages = 0;
+  for (const set of backupData.sets) {
+    if (set.items) totalImages += set.items.filter(i => i.type === 'image' && i.src.startsWith('data:')).length;
+  }
+  
+  let processedImages = 0;
+
+  for (const set of backupData.sets) {
+      const setFolder = zip.folder(set.id.toString());
+      const setMetaItems = [];
+
+      if (set.items) {
+          for (const item of set.items) {
+              if (item.type === 'image' && item.src && item.src.startsWith('data:')) {
+                  const parts = item.src.split(',');
+                  let ext = 'png';
+                  if (item.src.includes('image/jpeg')) ext = 'jpg';
+                  else if (item.src.includes('image/gif')) ext = 'gif';
+                  else if (item.src.includes('image/webp')) ext = 'webp';
+
+                  const filename = `${item.id}.${ext}`;
+                  const base64Data = parts.length > 1 ? parts[1] : parts[0];
+                  
+                  setFolder.file(filename, base64Data, { base64: true });
+                  setMetaItems.push({ ...item, src: `zip:${set.id}/${filename}` });
+                  
+                  processedImages++;
+                  if (onProgress) onProgress(processedImages, totalImages); // This covers zip generation phase
+              } else {
+                  setMetaItems.push(item);
+              }
+          }
+      }
+      
+      metaSets.push({ ...set, items: setMetaItems });
+  }
+
+  zip.file('backup.json', JSON.stringify({ ...backupData, sets: metaSets }));
+  const fullZipBlob = await zip.generateAsync({ type: 'blob' });
+
+  // 2. Chunking Logic
+  console.log(`Zip size: ${fullZipBlob.size} bytes. Chunk size: ${CHUNK_SIZE}`);
+  const totalChunks = Math.ceil(fullZipBlob.size / CHUNK_SIZE);
+
+  // Upload manifest to signal multi-part? 
+  // Easier: Just try to upload numbered parts.
+  // We need to delete old chunks if they are not needed? 
+  // Let's assume we overwrite. `backup.zip.0`, `001`?
+  // Use `backup.zip.0`, `backup.zip.1`...
+  // Warning: If previous upload had 5 chunks and new has 3, chunks 4 and 5 might remain.
+  // Robustness: Delete `backup.zip.*` first? Or just ignore on download (stop at error).
+  
+  // Let's Clean up briefly? `cloudList` then delete?
+  // `cloudDelete` takes name.
+  // Optimization: Just upload new chunks. On download, if we miss a chunk, we fail.
+  // If we have extra chunks from previous run, they are ignored if we count?
+  // How do we know count on download?
+  // We should save a MANIFEST file `backup.info` with chunk count.
+  
+  for (let i = 0; i < totalChunks; i++) {
+    const start = i * CHUNK_SIZE;
+    const end = Math.min(start + CHUNK_SIZE, fullZipBlob.size);
+    const chunkBlob = fullZipBlob.slice(start, end);
+    const chunkName = `backup.zip.${i}`;
+    
+    console.log(`Uploading chunk ${i}/${totalChunks}: ${chunkName} (${chunkBlob.size} bytes)`);
+    await cloudUploadSingle(chunkName, chunkBlob, password);
+    
+    if (onProgress) onProgress(i + 1, totalChunks); // This covers upload phase
+  }
+
+  // Upload Manifest
+  const manifest = {
+      totalChunks: totalChunks,
+      totalSize: fullZipBlob.size,
+      updatedAt: Date.now()
+  };
+  const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+  await cloudUploadSingle('backup.info', manifestBlob, password);
+
+  console.log('Upload complete.');
+  return { success: true };
+};
+
+// Cloud Download - Full Zip (Chunked)
+const cloudDownload = async (name, password, onProgress) => {
+  console.log('Downloading Chunked Zip...');
+  
+  // 1. Get Manifest
+  const manifestBlob = await cloudDownloadSingle('backup.info', password);
+  let totalChunks = 0;
+  
+  if (manifestBlob) {
+      try {
+          const m = JSON.parse(await manifestBlob.text());
+          totalChunks = m.totalChunks;
+          console.log(`Manifest found: ${totalChunks} chunks.`);
+      } catch (e) { console.warn('Manifest parse error', e); }
+  }
+
+  // Fallback: If no manifest, try downloading `backup.zip` (legacy single file) or `backup.zip.0` until fail.
+  // If `backup.info` missing, maybe it's old single file named `backup.zip`? 
+  // Or `backup`? The previous code used `backup.zip`.
+  
+  let combinedBlobParts = [];
+
+  if (totalChunks > 0) {
+      // Download known chunks
+      for (let i = 0; i < totalChunks; i++) {
+          const chunkName = `backup.zip.${i}`;
+          const chunk = await cloudDownloadSingle(chunkName, password);
+          if (!chunk) throw new Error(`Missing chunk ${i}`);
+          combinedBlobParts.push(chunk);
+          if (onProgress) onProgress(i + 1, totalChunks);
+      }
+  } else {
+      // Try legacy single `backup.zip`
+      const legacy = await cloudDownloadSingle('backup.zip', password);
+      if (legacy) {
+          console.log('Found legacy single backup.zip');
+          combinedBlobParts.push(legacy);
+      } else {
+          // Try probing `backup.zip.0` etc.
+          let i = 0;
+          while (true) {
+              const chunk = await cloudDownloadSingle(`backup.zip.${i}`, password);
+              if (!chunk) break;
+              combinedBlobParts.push(chunk);
+              i++;
+          }
+      }
+  }
+
+  if (combinedBlobParts.length === 0) return null;
+
+  const fullZipBlob = new Blob(combinedBlobParts);
+  console.log(`Combined Zip Size: ${fullZipBlob.size}`);
+
+  const zip = await JSZip.loadAsync(fullZipBlob);
+  const jsonStr = await zip.file('backup.json').async('string');
+  const backup = JSON.parse(jsonStr);
+
+  const restoredSets = [];
+  
+  // estimation
+  let totalItems = 0; 
+  for(const s of backup.sets) if(s.items) totalItems += s.items.length;
+  let processedItems = 0;
+
+  for (const set of backup.sets) {
+      const restoredItems = [];
+      if (set.items) {
+          for (const item of set.items) {
+              if (item.type === 'image' && item.src && item.src.startsWith('zip:')) {
+                  const path = item.src.replace('zip:', ''); 
+                  const file = zip.file(path);
+                  if (file) {
+                      const b64 = await file.async('base64');
+                      let mime = 'image/png';
+                      if (path.endsWith('.jpg')) mime = 'image/jpeg';
+                      else if (path.endsWith('.gif')) mime = 'image/gif';
+                      else if (path.endsWith('.webp')) mime = 'image/webp';
+                      
+                      restoredItems.push({ ...item, src: `data:${mime};base64,${b64}` });
+                  } else {
+                      restoredItems.push({ ...item, src: '' }); 
+                  }
+              } else {
+                  restoredItems.push(item);
+              }
+              processedItems++;
+              // if (onProgress) onProgress(processedItems, totalItems); // Reset progress? reusing `onProgress` name conflict with chunks?
+              // The caller handles generic progress.
+          }
+      }
+      restoredSets.push({ ...set, items: restoredItems });
+  }
+
+  return new Blob([JSON.stringify({ ...backup, sets: restoredSets })], { type: 'application/json' });
+};

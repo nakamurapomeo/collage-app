@@ -1,0 +1,123 @@
+
+// Cloud Upload - Full Zip (Reverted logic)
+const cloudUpload = async (backupData, password, onProgress) => {
+  console.log('Starting cloudUpload (Full Zip)...');
+
+  // We need to zip ALL sets. `backupData` contains sets with items.
+  const zip = new JSZip();
+  const metaSets = [];
+
+  let totalImages = 0;
+  for (const set of backupData.sets) {
+    if (set.items) totalImages += set.items.filter(i => i.type === 'image' && i.src.startsWith('data:')).length;
+  }
+  
+  let processedImages = 0;
+
+  for (const set of backupData.sets) {
+      const setFolder = zip.folder(set.id.toString());
+      const setMetaItems = [];
+
+      // We need to load full data if backupData only has metadata?
+      // `backupData` passed from saveToCloud seems to be full data if we constructed it securely.
+      // But `saveToCloud` calls `getAllFromDB()`. Yes, full data.
+
+      if (set.items) {
+          for (const item of set.items) {
+              if (item.type === 'image' && item.src && item.src.startsWith('data:')) {
+                  const parts = item.src.split(',');
+                  let ext = 'png';
+                  if (item.src.includes('image/jpeg')) ext = 'jpg';
+                  else if (item.src.includes('image/gif')) ext = 'gif';
+                  else if (item.src.includes('image/webp')) ext = 'webp';
+
+                  const filename = `${item.id}.${ext}`;
+                  setFolder.file(filename, parts.length > 1 ? parts[1] : '', { base64: true });
+                  setMetaItems.push({ ...item, src: `zip:${set.id}/${filename}` });
+                  
+                  processedImages++;
+                  if (onProgress) onProgress(processedImages, totalImages);
+              } else {
+                  setMetaItems.push(item);
+              }
+          }
+      }
+      
+      metaSets.push({ ...set, items: setMetaItems });
+  }
+
+  // Add metadata
+  zip.file('backup.json', JSON.stringify({ ...backupData, sets: metaSets }));
+
+  // Generate Zip Blob
+  const zipBlob = await zip.generateAsync({ type: 'blob' }, (metadata) => {
+      // onProgress could use metadata.percent if we want
+  });
+
+  // Upload Single File
+  // Using 'backup' as name, implying 'backup.zip' on server logic or just 'backup' key
+  // Worker expects name. Let's use 'backup.zip' for clarity, or just 'backup' if we used that before.
+  // Previous View showed `cloudUploadSingle('backup', jsonBlob...)`.
+  // Let's use 'backup.zip' to be safe with mime types if worker checks generic types.
+  // Actually, worker takes `name`.
+  
+  return await cloudUploadSingle('backup.zip', zipBlob, password);
+};
+
+// Cloud Download - Full Zip (Reverted logic)
+const cloudDownload = async (name, password, onProgress) => {
+  console.log('Downloading Full Zip...');
+  
+  // Name is distinct from file name? wrapper calls it with 'backup'.
+  // We uploaded as 'backup.zip', so we download 'backup.zip'.
+  
+  // Note: cloudDownloadSingle checks retries
+  const blob = await cloudDownloadSingle('backup.zip', password);
+  if (!blob) return null;
+
+  const zip = await JSZip.loadAsync(blob);
+  const jsonStr = await zip.file('backup.json').async('string');
+  const backup = JSON.parse(jsonStr);
+
+  // Restore images from zip
+  const restoredSets = [];
+  
+  let totalItems = 0; // estimation
+  for(const s of backup.sets) if(s.items) totalItems += s.items.length;
+  let processedItems = 0;
+
+  for (const set of backup.sets) {
+      const restoredItems = [];
+      if (set.items) {
+          for (const item of set.items) {
+              if (item.type === 'image' && item.src && item.src.startsWith('zip:')) {
+                  // src is "zip:{setId}/{filename}"
+                  // e.g. "zip:123/456.png"
+                  const path = item.src.replace('zip:', ''); // "123/456.png"
+                  // Zip folder structure: we created folder set.id.
+                  // accessing by full path: "123/456.png" should work if we verify folder usage.
+                  const file = zip.file(path);
+                  if (file) {
+                      const b64 = await file.async('base64');
+                      let mime = 'image/png';
+                      if (path.endsWith('.jpg')) mime = 'image/jpeg';
+                      else if (path.endsWith('.gif')) mime = 'image/gif';
+                      else if (path.endsWith('.webp')) mime = 'image/webp';
+                      
+                      restoredItems.push({ ...item, src: `data:${mime};base64,${b64}` });
+                  } else {
+                      restoredItems.push({ ...item, src: '' }); // Error
+                  }
+              } else {
+                  restoredItems.push(item);
+              }
+              processedItems++;
+              // onProgress...
+          }
+      }
+      restoredSets.push({ ...set, items: restoredItems });
+  }
+
+  // Return structure compatible with valid backup
+  return new Blob([JSON.stringify({ ...backup, sets: restoredSets })], { type: 'application/json' });
+};

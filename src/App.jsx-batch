@@ -1,0 +1,34 @@
+
+// Batch Upload (Multiple files in one request)
+const cloudUploadBatch = async (files, password) => {
+  const formData = new FormData();
+  files.forEach(({ name, blob }) => {
+    formData.append(name, blob);
+  });
+
+  const res = await fetch(`${SYNC_API_URL}/api/sync/batch/upload`, {
+    method: 'POST',
+    headers: { 'X-Sync-Password': safeEncode(password) },
+    body: formData
+  });
+
+  if (!res.ok) {
+    throw new Error(`Batch upload failed: ${res.status}`);
+  }
+  return await res.json();
+};
+
+// Batch Download (Request specific files, receive ZIP)
+const cloudDownloadBatch = async (filenames, password) => {
+  const res = await fetch(`${SYNC_API_URL}/api/sync/batch/download`, {
+    method: 'POST',
+    headers: { 
+      'Content-Type': 'application/json',
+      'X-Sync-Password': safeEncode(password)
+    },
+    body: JSON.stringify({ names: filenames })
+  });
+
+  if (!res.ok) throw new Error(`Batch download failed: ${res.status}`);
+  return await res.blob();
+};

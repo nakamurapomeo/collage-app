@@ -1,0 +1,31 @@
+
+// Download a single chunk/file with Retry Logic
+const cloudDownloadSingle = async (name, password, retries = 3) => {
+  let lastError;
+  for (let i = 0; i < retries; i++) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 min
+
+    try {
+      const res = await fetch(`${SYNC_API_URL}/api/sync/download?name=${encodeURIComponent(name)}`, {
+        headers: { 'X-Sync-Password': safeEncode(password) },
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      if (!res.ok) {
+        if (res.status === 404) return null; // Not found is not an error
+        const text = await res.text();
+        throw new Error(`Download failed: ${res.status} ${text}`);
+      }
+
+      return await res.blob();
+    } catch (e) {
+      clearTimeout(timeoutId);
+      console.warn(`Download attempt ${i + 1} failed for ${name}:`, e);
+      lastError = e;
+      if (i < retries - 1) await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+    }
+  }
+  throw lastError;
+};
