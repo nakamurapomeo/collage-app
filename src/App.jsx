@@ -2309,11 +2309,19 @@ function App() {
       return;
     }
     try {
-      const base64 = src.split(',')[1];
-      const mime = src.split(';')[0].split(':')[1];
-      const res = await fetch(src);
-      const blob = await res.blob();
+      // Extract mime type and base64 data
+      const [header, base64Data] = src.split(',');
+      const mime = header.match(/:(.*?);/)?.[1] || 'image/png';
 
+      // Convert base64 to binary
+      const binaryString = atob(base64Data);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      const blob = new Blob([bytes], { type: mime });
+
+      // Write to clipboard
       const item = new ClipboardItem({ [mime]: blob });
       await navigator.clipboard.write([item]);
       showToast('画像をコピーしました');
