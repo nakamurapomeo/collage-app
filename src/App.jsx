@@ -2823,6 +2823,19 @@ function App() {
                 {items.find(i => i.id === cropItemId)?.pinned ? '📌' : '⚪'}
               </button>
               <button className="close-btn" onClick={closeCropModal}>×</button>
+              <button
+                className="copy-btn-modal"
+                onClick={(e) => { e.stopPropagation(); handleCopyImage(cropImage); }}
+                style={{
+                  position: 'absolute', top: '8px', right: '40px',
+                  background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '50%',
+                  width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', zIndex: 10, fontSize: '13px'
+                }}
+                title="画像をコピー"
+              >
+                📋
+              </button>
               {/* Link input removed */}
               <div className="crop-container" ref={cropCanvasRef}
                 onMouseDown={handleCropStart} onMouseMove={handleCropMove} onMouseUp={handleCropEnd}
