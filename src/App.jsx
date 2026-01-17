@@ -483,6 +483,7 @@ function App() {
   const [bgColor, setBgColor] = useState('#1a1a2e');
   const [baseSize, setBaseSize] = useState(100);
   const [isDarkMode, setIsDarkMode] = useState(true); // Added missing state
+  const [isGrayscale, setIsGrayscale] = useState(false);
 
 
   // UI State
@@ -2301,8 +2302,29 @@ function App() {
 
   const selectedItem = items.find(i => i.id === selectedId);
 
+  // Copy Image to Clipboard (Original Quality)
+  const handleCopyImage = async (src) => {
+    if (!src || !src.startsWith('data:image')) {
+      showToast('画像が見つかりません');
+      return;
+    }
+    try {
+      const base64 = src.split(',')[1];
+      const mime = src.split(';')[0].split(':')[1];
+      const res = await fetch(src);
+      const blob = await res.blob();
+
+      const item = new ClipboardItem({ [mime]: blob });
+      await navigator.clipboard.write([item]);
+      showToast('画像をコピーしました');
+    } catch (e) {
+      console.error('Copy failed:', e);
+      showToast('コピーに失敗しました');
+    }
+  };
+
   return (
-    <div className={`app ${isDarkMode ? 'dark' : ''}`}>
+    <div className={`app ${isDarkMode ? 'dark' : ''} ${isGrayscale ? 'grayscale-mode' : ''}`}>
       {isSyncing && (
         <div className="progress-overlay">
           <div className="progress-container">
@@ -2383,6 +2405,21 @@ function App() {
                   onChange={e => setRandomInterval(+e.target.value)}
                   style={{ width: '100%' }}
                 />
+              </div>
+            </div>
+
+            <div className="settings-section">
+              <h3>🎨 表示モード</h3>
+              <div className="settings-row">
+                <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={isGrayscale}
+                    onChange={e => setIsGrayscale(e.target.checked)}
+                    style={{ marginRight: '8px' }}
+                  />
+                  グレースケールモード
+                </label>
               </div>
             </div>
 
@@ -2552,7 +2589,7 @@ function App() {
               // transition: isSyncing ? 'none' : (swipeStartRef.current ? 'none' : 'transform 0.3s ease-out')
             }}
           >
-            {isPulling && <div className="pull-indicator">⬇️ シャッフル</div>}
+            {isPulling && <div className="pull-indicator" style={{ opacity: 0.6, fontSize: '3rem' }}>🔀</div>}
 
 
             <div
@@ -2631,6 +2668,7 @@ function App() {
                   />
                   <span>{(selectedItem.scale || 1).toFixed(1)}x</span>
                 </div>
+                <button onClick={() => handleCopyImage(selectedItem.src)} className="copy-btn" title="画像をコピー" style={{ marginRight: '8px' }}>📋</button>
                 <button onClick={() => deleteItem(selectedId)} className="delete-btn">×</button>
               </div>
             )}

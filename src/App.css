@@ -1509,3 +1509,9 @@ html {
   width: 150px;
   cursor: pointer;
 }
+
+/* Grayscale Mode */
+.grayscale-mode .main-content {
+  filter: grayscale(100%);
+}
+
