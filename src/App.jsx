@@ -2823,111 +2823,114 @@ function App() {
                 {items.find(i => i.id === cropItemId)?.pinned ? '📌' : '⚪'}
               </button>
               <button className="close-btn" onClick={closeCropModal}>×</button>
-              title="画像をコピー"
-              style={{
-                position: 'absolute', top: '8px', right: '60px',
-                background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '50%',
-                width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer', zIndex: 10, fontSize: '13px'
-              }}
+              <button
+                className="copy-btn-modal"
+                onClick={(e) => { e.stopPropagation(); handleCopyImage(cropImage); }}
+                style={{
+                  position: 'absolute', top: '8px', right: '60px',
+                  background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '50%',
+                  width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', zIndex: 10, fontSize: '13px'
+                }}
+                title="画像をコピー"
               >
-              📋
-            </button>
-            {/* Link input removed */}
-            <div className="crop-container" ref={cropCanvasRef}
-              onMouseDown={handleCropStart} onMouseMove={handleCropMove} onMouseUp={handleCropEnd}
-              onTouchStart={handleCropStart} onTouchMove={handleCropMove} onTouchEnd={handleCropEnd}
-            >
-              <img src={cropImage} alt="crop" draggable={false} style={{ transform: `translate(${cropTranslate.x}px, ${cropTranslate.y}px) scale(${cropScale})`, transformOrigin: 'center' }} />
-              {cropLink && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); openCropLink(); }}
-                  style={{
-                    position: 'absolute', bottom: '10px', right: '10px', zIndex: 20,
-                    background: 'rgba(0,0,0,0.5)', color: '#fff', border: 'none', borderRadius: '50%',
-                    width: '50px', height: '50px', fontSize: '1.3rem', cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center'
-                  }}
-                  title="リンクを開く"
-                >
-                  🔗
-                </button>
-              )}
-              {cropStart && cropEnd && (
-                <div className="crop-selection" style={{
-                  left: Math.min(cropStart.x, cropEnd.x), top: Math.min(cropStart.y, cropEnd.y),
-                  width: Math.abs(cropEnd.x - cropStart.x), height: Math.abs(cropEnd.y - cropStart.y)
-                }}>
-                  <div style={{ position: 'absolute', top: -10, left: -10, width: 20, height: 20, borderTop: '4px solid white', borderLeft: '4px solid white' }} />
-                  <div style={{ position: 'absolute', top: -10, right: -10, width: 20, height: 20, borderTop: '4px solid white', borderRight: '4px solid white' }} />
-                  <div style={{ position: 'absolute', bottom: -10, left: -10, width: 20, height: 20, borderBottom: '4px solid white', borderLeft: '4px solid white' }} />
-                  <div style={{ position: 'absolute', bottom: -10, right: -10, width: 20, height: 20, borderBottom: '4px solid white', borderRight: '4px solid white' }} />
-                </div>
-              )}
-            </div>
-            <div className="crop-buttons">
-              <button onClick={editCropLink} title="リンク設定">🔗</button>
-              <button onClick={applyCrop} disabled={!cropStart || !cropEnd} title="適用" style={{ fontSize: '1.5rem', padding: '8px 24px' }}>✅</button>
-              <button onClick={copyCrop} disabled={!cropStart || !cropEnd} title="コピー">📋</button>
-              <button onClick={deleteCurrentCropItem} className="btn-danger" title="削除">🗑️</button>
-              <button onClick={moveCurrentCropItem} className="secondary" title="移動">➡️</button>
+                📋
+              </button>
+              {/* Link input removed */}
+              <div className="crop-container" ref={cropCanvasRef}
+                onMouseDown={handleCropStart} onMouseMove={handleCropMove} onMouseUp={handleCropEnd}
+                onTouchStart={handleCropStart} onTouchMove={handleCropMove} onTouchEnd={handleCropEnd}
+              >
+                <img src={cropImage} alt="crop" draggable={false} style={{ transform: `translate(${cropTranslate.x}px, ${cropTranslate.y}px) scale(${cropScale})`, transformOrigin: 'center' }} />
+                {cropLink && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); openCropLink(); }}
+                    style={{
+                      position: 'absolute', bottom: '10px', right: '10px', zIndex: 20,
+                      background: 'rgba(0,0,0,0.5)', color: '#fff', border: 'none', borderRadius: '50%',
+                      width: '50px', height: '50px', fontSize: '1.3rem', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}
+                    title="リンクを開く"
+                  >
+                    🔗
+                  </button>
+                )}
+                {cropStart && cropEnd && (
+                  <div className="crop-selection" style={{
+                    left: Math.min(cropStart.x, cropEnd.x), top: Math.min(cropStart.y, cropEnd.y),
+                    width: Math.abs(cropEnd.x - cropStart.x), height: Math.abs(cropEnd.y - cropStart.y)
+                  }}>
+                    <div style={{ position: 'absolute', top: -10, left: -10, width: 20, height: 20, borderTop: '4px solid white', borderLeft: '4px solid white' }} />
+                    <div style={{ position: 'absolute', top: -10, right: -10, width: 20, height: 20, borderTop: '4px solid white', borderRight: '4px solid white' }} />
+                    <div style={{ position: 'absolute', bottom: -10, left: -10, width: 20, height: 20, borderBottom: '4px solid white', borderLeft: '4px solid white' }} />
+                    <div style={{ position: 'absolute', bottom: -10, right: -10, width: 20, height: 20, borderBottom: '4px solid white', borderRight: '4px solid white' }} />
+                  </div>
+                )}
+              </div>
+              <div className="crop-buttons">
+                <button onClick={editCropLink} title="リンク設定">🔗</button>
+                <button onClick={applyCrop} disabled={!cropStart || !cropEnd} title="適用" style={{ fontSize: '1.5rem', padding: '8px 24px' }}>✅</button>
+                <button onClick={copyCrop} disabled={!cropStart || !cropEnd} title="コピー">📋</button>
+                <button onClick={deleteCurrentCropItem} className="btn-danger" title="削除">🗑️</button>
+                <button onClick={moveCurrentCropItem} className="secondary" title="移動">➡️</button>
+              </div>
             </div>
           </div>
+        )
+      }
+
+      {
+        showTextModal && (
+          <div className="modal-overlay modal-overlay-top" onClick={() => setShowTextModal(false)}>
+            <div className="modal modal-top" onClick={e => e.stopPropagation()}>
+              {/* No Close Button */}
+              <input type="text" value={textInput} onChange={e => setTextInput(e.target.value)} placeholder="テキスト..." autoFocus />
+              <div className="modal-row">
+                <input type="color" value={textColor} onChange={e => setTextColor(e.target.value)} />
+                <input type="range" min="10" max="60" value={textSize} onChange={e => setTextSize(+e.target.value)} />
+              </div>
+              <button onClick={addText}>追加</button>
+            </div>
           </div>
-  )
-}
+        )
+      }
 
-{
-  showTextModal && (
-    <div className="modal-overlay modal-overlay-top" onClick={() => setShowTextModal(false)}>
-      <div className="modal modal-top" onClick={e => e.stopPropagation()}>
-        {/* No Close Button */}
-        <input type="text" value={textInput} onChange={e => setTextInput(e.target.value)} placeholder="テキスト..." autoFocus />
-        <div className="modal-row">
-          <input type="color" value={textColor} onChange={e => setTextColor(e.target.value)} />
-          <input type="range" min="10" max="60" value={textSize} onChange={e => setTextSize(+e.target.value)} />
-        </div>
-        <button onClick={addText}>追加</button>
-      </div>
-    </div>
-  )
-}
+      {
+        showSearchModal && (
+          <div className="modal-overlay modal-overlay-top" onClick={() => setShowSearchModal(false)}>
+            <div className="modal modal-top" onClick={e => e.stopPropagation()}>
+              {/* No Close Button */}
+              <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="画像検索..." autoFocus />
+              <div className="search-buttons">
+                <button onClick={searchGoogle}>🔍 Google</button>
+                <button onClick={searchDuckDuckGo}>🦆 DuckDuckGo</button>
+              </div>
+              <p className="search-note">長押しで保存して追加してください</p>
+            </div>
+          </div>
+        )
+      }
 
-{
-  showSearchModal && (
-    <div className="modal-overlay modal-overlay-top" onClick={() => setShowSearchModal(false)}>
-      <div className="modal modal-top" onClick={e => e.stopPropagation()}>
-        {/* No Close Button */}
-        <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="画像検索..." autoFocus />
-        <div className="search-buttons">
-          <button onClick={searchGoogle}>🔍 Google</button>
-          <button onClick={searchDuckDuckGo}>🦆 DuckDuckGo</button>
-        </div>
-        <p className="search-note">長押しで保存して追加してください</p>
-      </div>
-    </div>
-  )
-}
-
-{/* PC Zoom Slider */ }
-{
-  !('ontouchstart' in window) && (
-    <div className="zoom-slider-container">
-      <span style={{ fontSize: '1.2rem' }}>🔍</span>
-      <input
-        type="range"
-        min="50"
-        max="300"
-        value={baseSize}
-        onChange={e => {
-          const newSize = +e.target.value;
-          setBaseSize(newSize);
-          setItems(prev => packItemsTight(prev, canvasWidth, newSize));
-        }}
-      />
-    </div>
-  )
-}
+      {/* PC Zoom Slider */}
+      {
+        !('ontouchstart' in window) && (
+          <div className="zoom-slider-container">
+            <span style={{ fontSize: '1.2rem' }}>🔍</span>
+            <input
+              type="range"
+              min="50"
+              max="300"
+              value={baseSize}
+              onChange={e => {
+                const newSize = +e.target.value;
+                setBaseSize(newSize);
+                setItems(prev => packItemsTight(prev, canvasWidth, newSize));
+              }}
+            />
+          </div>
+        )
+      }
     </div >
   );
 }
