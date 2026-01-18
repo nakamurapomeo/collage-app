@@ -1378,16 +1378,36 @@ function App() {
     try {
       // Collect ALL sets with full data
       const allSetsData = [];
+      let totalImageCount = 0;
+
+      console.log(`[Cloud Save] Starting... ${collageSets.length} sets to process`);
+
       for (const set of collageSets) {
         let setData;
         if (set.id == currentSetId && currentSetId !== 'merged') {
+          // Current set - use live state
           setData = { id: set.id, name: set.name, items, bgColor, baseSize };
+          console.log(`[Cloud Save] Set "${set.name}" (current): ${items.length} items`);
         } else {
+          // Other sets - load from IndexedDB
           const dbData = await loadFromDB(set.id);
-          setData = dbData ? { id: set.id, name: set.name, ...dbData } : { id: set.id, name: set.name, items: [], bgColor: '#1a1a2e', baseSize: 100 };
+          if (dbData && dbData.items) {
+            setData = { id: set.id, name: set.name, ...dbData };
+            console.log(`[Cloud Save] Set "${set.name}" (from DB): ${dbData.items.length} items`);
+          } else {
+            setData = { id: set.id, name: set.name, items: [], bgColor: '#1a1a2e', baseSize: 100 };
+            console.warn(`[Cloud Save] Set "${set.name}": No data in IndexedDB, saving empty`);
+          }
         }
+
+        // Count images
+        const imageCount = (setData.items || []).filter(i => i.type === 'image' && i.src && i.src.startsWith('data:')).length;
+        totalImageCount += imageCount;
+
         allSetsData.push(setData);
       }
+
+      console.log(`[Cloud Save] Total: ${allSetsData.length} sets, ${totalImageCount} images`);
 
       // Create unified backup
       const backup = {
@@ -1398,18 +1418,17 @@ function App() {
       };
 
       // Upload (Differential)
-      showToast('アップロード中...');
+      showToast(`${allSetsData.length}セット / ${totalImageCount}枚をアップロード中...`);
       setSyncProgress(0);
       await cloudUpload(backup, getCloudKey(), (current, total) => {
         const pct = (current / total) * 100;
         setSyncProgress(pct);
-        // showToast(`アップロード中 ${Math.round(pct)}%...`); // Optional: reduce toast spam
       });
 
       // Cleanup old chunks (legacy)
       await cleanupOldBackups(null, getCloudKey());
 
-      showToast('クラウドに保存しました ✓');
+      showToast(`✓ 保存完了: ${allSetsData.length}セット / ${totalImageCount}枚`);
 
       // Update Sync Timestamp
       const now = Date.now();
