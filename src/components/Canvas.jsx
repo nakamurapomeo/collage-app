@@ -1,0 +1,131 @@
+import { useRef, useState, useEffect } from 'react'
+import { apiClient } from '../apiClient' // Updated import
+import { CollageItem } from './CollageItem'
+import { CropModal } from './CropModal'
+
+export function Canvas({
+    items, setItems, collageId, fileInputRef, baseSize,
+    onPack, onShuffle, canvasScale, setCanvasScale,
+    onSave // New prop to handle saving
+}) {
+    const [uploading, setUploading] = useState(false)
+    const [selectedItem, setSelectedItem] = useState(null)
+    const containerRef = useRef(null)
+
+    useEffect(() => {
+        const timer = setTimeout(() => { onPack() }, 300)
+        return () => clearTimeout(timer)
+    }, [canvasScale])
+
+    const uploadImage = async (file) => {
+        // Generate simple path
+        const path = `${collageId}/${Date.now()}-${file.name || 'img.jpg'}`
+        const publicUrl = await apiClient.storage.upload(file, path)
+        return publicUrl
+    }
+
+    const handleFiles = async (files) => {
+        setUploading(true)
+        let newItems = []
+        for (const file of files) {
+            if (file.type.startsWith('image/')) {
+                const publicUrl = await uploadImage(file)
+                if (publicUrl) {
+                    const img = new Image()
+                    img.src = publicUrl
+                    await new Promise(r => img.onload = r)
+                    const aspectRatio = img.naturalWidth / img.naturalHeight
+                    const width = Math.floor(baseSize * aspectRatio)
+                    newItems.push({
+                        id: crypto.randomUUID(), // Local ID generation
+                        collage_id: collageId, type: 'image', content: publicUrl,
+                        x: 0, y: 0, width: width || 200, height: baseSize || 200,
+                        z_index: items.length + newItems.length + 1, style: {}
+                    })
+                }
+            }
+        }
+
+        if (newItems.length > 0) {
+            const updatedList = [...items, ...newItems]
+            onPack(null, updatedList) // Triggers save in App.jsx
+        }
+        setUploading(false)
+    }
+
+    const updateItem = async (id, changes, saveToDb = true) => {
+        let updatedList = items;
+
+        if (changes.newFile) {
+            setUploading(true)
+            const publicUrl = await uploadImage(changes.newFile)
+            setUploading(false)
+            if (publicUrl) {
+                const actualChanges = { content: publicUrl, style: { ...changes.style, scale: 1 }, content_link: changes.content_link }
+                updatedList = items.map(i => i.id === id ? { ...i, ...actualChanges } : i)
+                setItems(updatedList)
+            }
+        } else {
+            updatedList = items.map(i => i.id === id ? { ...i, ...changes } : i)
+            setItems(updatedList)
+        }
+
+        if (saveToDb) {
+            onSave(updatedList)
+        }
+    }
+
+    const deleteItem = async (id) => {
+        setSelectedItem(null)
+        const remaining = items.filter(i => i.id !== id)
+        setItems(remaining)
+        onPack(null, remaining) // Triggers save
+    }
+
+    const handleRandom = () => {
+        if (!selectedItem) return
+        const images = items.filter(i => i.type === 'image' && i.id !== selectedItem.id)
+        if (images.length === 0) return
+        const random = images[Math.floor(Math.random() * images.length)]
+        setSelectedItem(random)
+    }
+
+    return (
+        <div
+            style={{
+                marginTop: '60px', width: '100%', height: 'calc(100vh - 60px)',
+                position: 'relative', overflow: 'hidden', background: '#121212', touchAction: 'none'
+            }}
+            ref={containerRef}
+            onDragOver={e => e.preventDefault()}
+            onDrop={e => {
+                e.preventDefault()
+                if (e.dataTransfer.files.length > 0) handleFiles(Array.from(e.dataTransfer.files))
+            }}
+            onClick={() => setSelectedItem(null)}
+        >
+            <input type="file" multiple accept="image/*" style={{ display: 'none' }} ref={fileInputRef} onChange={(e) => handleFiles(Array.from(e.target.files))} />
+
+            <div style={{
+                transformOrigin: 'top left', transform: `scale(${canvasScale})`,
+                width: '100%', height: '100%', position: 'absolute', top: 0, left: 0,
+                transition: 'transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
+            }}>
+                {items.map(item => (
+                    <CollageItem key={item.id} item={item} updateItem={updateItem} deleteItem={deleteItem} onSelect={setSelectedItem} />
+                ))}
+            </div>
+
+            {selectedItem && (
+                <CropModal item={selectedItem} onClose={() => setSelectedItem(null)} onSave={updateItem} onDelete={deleteItem} onRandom={handleRandom} />
+            )}
+
+            {items.length === 0 && !uploading && (
+                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: '#555', pointerEvents: 'none', textAlign: 'center' }}>
+                    Drag & Drop images or click 📷<br />New images will appear at the bottom
+                </div>
+            )}
+            {uploading && <div style={{ position: 'fixed', bottom: 20, right: 20, background: '#333', padding: 10, borderRadius: 8, color: 'white' }}>Uploading...</div>}
+        </div>
+    )
+}
