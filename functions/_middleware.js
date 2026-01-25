@@ -37,3 +37,5 @@ export async function onRequest(context) {
         return new Response(JSON.stringify({ error: 'Invalid Token' }), { status: 401 });
     }
 }
+
+// Force rebuild
