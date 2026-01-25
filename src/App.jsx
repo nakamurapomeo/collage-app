@@ -74,12 +74,15 @@ function App() {
                 // Re-pack if needed, but usually just display is fine
                 if (loadedItems.length > 0) {
                     const container = document.querySelector('.pull-to-refresh-container') || document.querySelector('.canvas-container');
-                    const containerW = container?.clientWidth || window.innerWidth;
-                    // Ensure valid width. If 0 (hidden), fallback to window. If negative calc, clamp.
+                    let containerW = container?.clientWidth || 0;
+                    if (containerW < 100) containerW = window.innerWidth; // Safety fallback for manual refresh too
+
                     const safeW = Math.max(containerW, 320);
                     const packingWidth = safeW / canvasScale; // Full width (trust box-sizing)
                     const packed = packItemsTight(loadedItems, packingWidth, baseSize)
                     setItems(packed)
+                    setToast('Updated! 🔄')
+                    setTimeout(() => setToast(null), 2000)
                 }
             }
         }
