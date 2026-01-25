@@ -80,7 +80,7 @@ function App() {
                     const containerW = container?.clientWidth || window.innerWidth;
                     // Ensure valid width. If 0 (hidden), fallback to window. If negative calc, clamp.
                     const safeW = Math.max(containerW, 320);
-                    const packingWidth = (safeW - 24) / canvasScale;
+                    const packingWidth = (safeW - 40) / canvasScale; // -40px for extra safety
                     const packed = packItemsTight(loadedItems, packingWidth, baseSize)
                     setItems(packed)
                 }
@@ -97,6 +97,8 @@ function App() {
     }, [isLoggedIn, collageId])
 
     // Background Polling for Real-time Sync
+    // User requested to disable auto-sync of sort order/layout
+    /*
     useEffect(() => {
         if (!isLoggedIn || !collageId) return
 
@@ -114,7 +116,11 @@ function App() {
                 if (currentItemsStr !== serverItemsStr) {
                     // Update items and re-pack
                     const loadedItems = collageData.items
-                    const packed = packItemsTight(loadedItems, window.innerWidth / canvasScale, baseSize)
+                    const container = document.querySelector('.pull-to-refresh-container') || document.querySelector('.canvas-container');
+                    const containerW = container?.clientWidth || window.innerWidth;
+                    const safeW = Math.max(containerW, 320);
+                    const packingWidth = (safeW - 40) / canvasScale;
+                    const packed = packItemsTight(loadedItems, packingWidth, baseSize)
                     setItems(packed)
                 }
             }
@@ -122,6 +128,7 @@ function App() {
 
         return () => clearInterval(interval)
     }, [isLoggedIn, collageId, loading, syncStatus, items, canvasScale, baseSize, showTextModal])
+    */
 
 
     // Actions
@@ -205,7 +212,7 @@ function App() {
         const container = document.querySelector('.pull-to-refresh-container') || document.querySelector('.canvas-container');
         const containerW = container?.clientWidth || window.innerWidth;
         const safeW = Math.max(containerW, 320);
-        const packingWidth = (safeW - 24) / canvasScale;
+        const packingWidth = (safeW - 40) / canvasScale;
         const packed = packItemsTight(newItems, packingWidth, baseSize)
         setItems(packed)
 
@@ -217,7 +224,7 @@ function App() {
         const container = document.querySelector('.pull-to-refresh-container') || document.querySelector('.canvas-container');
         const containerW = customWidth || container?.clientWidth || window.innerWidth;
         const safeW = Math.max(containerW, 320);
-        const width = (safeW - 24) / canvasScale
+        const width = (safeW - 40) / canvasScale
         const targetItems = itemsToPack || items
         const packed = packItemsTight(targetItems, width, 180) // Target height from specification
         setItems(packed)
@@ -275,7 +282,7 @@ function App() {
                         const container = document.querySelector('.pull-to-refresh-container') || document.querySelector('.canvas-container');
                         const containerW = container?.clientWidth || window.innerWidth;
                         const safeW = Math.max(containerW, 320);
-                        const packWidth = (safeW - 24) / canvasScale;
+                        const packWidth = (safeW - 40) / canvasScale;
                         const packed = packItemsTight(newItems, packWidth, baseSize)
                         setItems(packed)
                         await saveCollage(packed)
