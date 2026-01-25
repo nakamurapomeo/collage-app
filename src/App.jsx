@@ -195,7 +195,7 @@ function App() {
         }
     }
 
-    const saveCollage = async (overrideItems) => {
+    const saveCollage = useCallback(async (overrideItems) => {
         lastLocalInteractionRef.current = Date.now() // Update interaction time
         if (!collageId || loading) return // Prevent saving while loading or if not ready
         setSyncStatus('unsaved')
@@ -219,7 +219,7 @@ function App() {
             setToast('Saved! ✅')
             setTimeout(() => setToast(null), 2000)
         }
-    }
+    }, [collageId, loading, collageSets, items])
 
     const handleAddText = async ({ text, color, size }) => {
         const width = text.length * size * 0.6
@@ -253,7 +253,7 @@ function App() {
         const packed = packItemsTight(targetItems, width, 180) // Target height from specification
         setItems(packed)
         if (shouldSave) saveCollage(packed)
-    }, [items, collageId, canvasScale])
+    }, [items, collageId, canvasScale, saveCollage])
 
     const handleShuffle = useCallback(() => {
         const canvasContainer = document.querySelector('.canvas-container');
@@ -266,7 +266,7 @@ function App() {
             saveCollage(packed)
             return packed
         })
-    }, [collageId, canvasScale])
+    }, [collageId, canvasScale, saveCollage])
 
     const handlePasteImage = async () => {
         try {
