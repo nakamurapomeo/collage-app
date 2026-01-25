@@ -125,6 +125,8 @@ export function Canvas({
         setSelectedItem(random)
     }
 
+    const totalHeight = items.reduce((max, item) => Math.max(max, item.y + item.height), 0);
+
     return (
         <div
             style={{
@@ -145,6 +147,7 @@ export function Canvas({
             <PullToRefresh onRefresh={onShuffle}>
                 <div style={{
                     minHeight: 'calc(100vh - 60px + 1px)',
+                    height: totalHeight > 0 ? `${totalHeight * canvasScale + 200}px` : '100%', // Expand to fit content + padding
                     position: 'relative',
                     paddingBottom: '40vh' // Extra space for better scroll feel
                 }}>
