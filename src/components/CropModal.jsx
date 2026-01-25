@@ -61,16 +61,27 @@ export function CropModal({ item, onClose, onSave, onDelete, onRandom }) {
     }
 
     // --- handlers ---
-    const handleMouseDown = (e) => {
+    // --- handlers ---
+    const handleStart = (clientX, clientY) => {
         if (!imgRef.current) return
-        e.stopPropagation(); e.preventDefault()
         const rect = imgRef.current.getBoundingClientRect()
-        const x = e.clientX - rect.left
-        const y = e.clientY - rect.top
+        const x = clientX - rect.left
+        const y = clientY - rect.top
 
         // If clicking on resize handle (handled by specific onMouseDowns), ignore
         // If clicking outside handles, start new crop or reset
         setCropStart({ x, y }); setCropEnd({ x, y }); setIsCropping(true)
+    }
+
+    const handleMouseDown = (e) => {
+        e.stopPropagation(); e.preventDefault()
+        handleStart(e.clientX, e.clientY)
+    }
+
+    const handleTouchStartCrop = (e) => {
+        if (e.touches.length !== 1) return
+        e.stopPropagation()
+        handleStart(e.touches[0].clientX, e.touches[0].clientY)
     }
 
     // Resize Handler for Knobs
