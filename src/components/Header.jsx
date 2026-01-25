@@ -174,13 +174,13 @@ export function Header({
                 {/* Main Actions */}
                 {!isMobile && (
                     <>
-                        <button onClick={onPaste} title="Paste from Clipboard" style={buttonStyle}>📋</button>
                         <button onClick={onShuffle} title="Shuffle" style={buttonStyle}>🎲</button>
                         <button onClick={onAddText} title="Add Text" style={buttonStyle}>Aa</button>
                     </>
                 )}
 
-                {/* Add Image (Always visible) */}
+                {/* Add Actions (Always visible) */}
+                <button onClick={onPaste} title="Paste from Clipboard" style={buttonStyle}>📋</button>
                 <button onClick={() => fileInputRef.current?.click()} title="Add Image" style={buttonStyle}>📷</button>
 
                 {/* Menu */}
@@ -204,7 +204,6 @@ export function Header({
                                             </div>
                                         </div>
                                         <button onClick={() => { onShuffle(); setShowMenu(false); }} style={{ textAlign: 'left', background: 'transparent', padding: '10px', color: 'white', border: 'none' }}>🎲 Shuffle</button>
-                                        <button onClick={() => { onPaste(); setShowMenu(false); }} style={{ textAlign: 'left', background: 'transparent', padding: '10px', color: 'white', border: 'none' }}>📋 Paste</button>
                                         <button onClick={() => { onAddText(); setShowMenu(false); }} style={{ textAlign: 'left', background: 'transparent', padding: '10px', color: 'white', border: 'none' }}>Aa Add Text</button>
                                     </>
                                 )}
