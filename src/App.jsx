@@ -207,19 +207,23 @@ function App() {
         const canvasContainer = document.querySelector('.canvas-container');
         const width = customWidth || (canvasContainer?.clientWidth / canvasScale) || (window.innerWidth / canvasScale)
         const targetItems = itemsToPack || items
-        const packed = packItemsTight(targetItems, width, baseSize)
+        const packed = packItemsTight(targetItems, width, 180) // Target height from specification
         setItems(packed)
         saveCollage(packed)
-    }, [items, baseSize, collageId, canvasScale])
+    }, [items, collageId, canvasScale])
 
     const handleShuffle = useCallback(() => {
         const canvasContainer = document.querySelector('.canvas-container');
         const width = (canvasContainer?.clientWidth / canvasScale) || (window.innerWidth / canvasScale)
-        const shuffled = [...items].sort(() => Math.random() - 0.5)
-        const packed = packItemsTight(shuffled, width, baseSize)
-        setItems(packed)
-        saveCollage(packed)
-    }, [items, baseSize, collageId, canvasScale])
+
+        // Use functional update to ensure we have the latest items
+        setItems(currentItems => {
+            const shuffled = [...currentItems].sort(() => Math.random() - 0.5)
+            const packed = packItemsTight(shuffled, width, 180)
+            saveCollage(packed)
+            return packed
+        })
+    }, [collageId, canvasScale])
 
     const handlePasteImage = async () => {
         try {
