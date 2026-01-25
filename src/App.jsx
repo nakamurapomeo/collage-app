@@ -77,10 +77,37 @@ function App() {
         setLoading(false)
     }, [isLoggedIn, collageId]) // Removed canvasScale, baseSize from dependencies
 
-    // Main Data Fetch Effect
+    // Main Data Fetch Effect (Initial & on ID change)
     useEffect(() => {
         if (isLoggedIn) fetchCollages()
-    }, [isLoggedIn, collageId]) // Reacts to ID change too
+    }, [isLoggedIn, collageId])
+
+    // Background Polling for Real-time Sync
+    useEffect(() => {
+        if (!isLoggedIn || !collageId) return
+
+        const interval = setInterval(async () => {
+            // Skip polling if we are currently loading, have unsaved changes, or show modal
+            if (loading || syncStatus === 'unsaved' || showTextModal) return
+
+            // Fetch current collage items silently
+            const { data: collageData } = await apiClient.collages.get(collageId)
+            if (collageData && Array.isArray(collageData.items)) {
+                // simple check to avoid unnecessary state updates if nothing changed
+                const currentItemsStr = JSON.stringify(items)
+                const serverItemsStr = JSON.stringify(collageData.items)
+
+                if (currentItemsStr !== serverItemsStr) {
+                    // Update items and re-pack
+                    const loadedItems = collageData.items
+                    const packed = packItemsTight(loadedItems, window.innerWidth / canvasScale, baseSize)
+                    setItems(packed)
+                }
+            }
+        }, 5000) // Poll every 5 seconds
+
+        return () => clearInterval(interval)
+    }, [isLoggedIn, collageId, loading, syncStatus, items, canvasScale, baseSize, showTextModal])
 
 
     // Actions
