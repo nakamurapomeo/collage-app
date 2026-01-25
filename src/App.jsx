@@ -78,8 +78,10 @@ function App() {
                 if (loadedItems.length > 0) {
                     const container = document.querySelector('.pull-to-refresh-container') || document.querySelector('.canvas-container');
                     const containerW = container?.clientWidth || window.innerWidth;
-                    const width = (containerW - 24) / canvasScale; // -24px for strict scrollbar safety
-                    const packed = packItemsTight(loadedItems, width, baseSize)
+                    // Ensure valid width. If 0 (hidden), fallback to window. If negative calc, clamp.
+                    const safeW = Math.max(containerW, 320);
+                    const packingWidth = (safeW - 24) / canvasScale;
+                    const packed = packItemsTight(loadedItems, packingWidth, baseSize)
                     setItems(packed)
                 }
             }
@@ -202,7 +204,8 @@ function App() {
         // Pack
         const container = document.querySelector('.pull-to-refresh-container') || document.querySelector('.canvas-container');
         const containerW = container?.clientWidth || window.innerWidth;
-        const packingWidth = (containerW - 24) / canvasScale;
+        const safeW = Math.max(containerW, 320);
+        const packingWidth = (safeW - 24) / canvasScale;
         const packed = packItemsTight(newItems, packingWidth, baseSize)
         setItems(packed)
 
@@ -211,8 +214,10 @@ function App() {
     }
 
     const handlePack = useCallback((customWidth = null, itemsToPack = null) => {
-        const canvasContainer = document.querySelector('.canvas-container');
-        const width = customWidth || (canvasContainer?.clientWidth / canvasScale) || (window.innerWidth / canvasScale)
+        const container = document.querySelector('.pull-to-refresh-container') || document.querySelector('.canvas-container');
+        const containerW = customWidth || container?.clientWidth || window.innerWidth;
+        const safeW = Math.max(containerW, 320);
+        const width = (safeW - 24) / canvasScale
         const targetItems = itemsToPack || items
         const packed = packItemsTight(targetItems, width, 180) // Target height from specification
         setItems(packed)
@@ -269,7 +274,8 @@ function App() {
                         // Pack and Save
                         const container = document.querySelector('.pull-to-refresh-container') || document.querySelector('.canvas-container');
                         const containerW = container?.clientWidth || window.innerWidth;
-                        const packWidth = (containerW - 24) / canvasScale;
+                        const safeW = Math.max(containerW, 320);
+                        const packWidth = (safeW - 24) / canvasScale;
                         const packed = packItemsTight(newItems, packWidth, baseSize)
                         setItems(packed)
                         await saveCollage(packed)
