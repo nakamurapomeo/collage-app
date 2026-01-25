@@ -30,19 +30,16 @@ export const packItemsTight = (itemList, containerWidth, targetRowHeight = 100) 
         let x = 0;
         for (const item of items) {
             const aspectRatio = item.aspect_ratio || (item.width / item.height) || 1;
-            // Recalculate dimensions based on row height
-            const itemWidth = Math.floor(rowHeight * aspectRatio);
-            const itemHeight = Math.floor(rowHeight);
+            // Recalculate dimensions based on row height - NO ROUNDING to keep ratio perfect
+            const itemWidth = rowHeight * aspectRatio;
+            const itemHeight = rowHeight;
 
             packed.push({
                 ...item,
-                x: Math.floor(x),
-                y: Math.floor(y),
-                // We update the dimensions to fit the packing
+                x: x,
+                y: y,
                 width: itemWidth,
                 height: itemHeight,
-                // We might store 'base' dimensions if we want to retain original quality scale
-                // but for this app, width/height updates are fine.
             });
             x += itemWidth;
         }
