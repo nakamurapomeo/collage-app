@@ -204,8 +204,8 @@ function App() {
     }
 
     const handlePack = useCallback((customWidth = null, itemsToPack = null) => {
-        const canvasContainer = document.querySelector('.pull-to-refresh-container'); // Need to ensure this class exists
-        const width = customWidth || (canvasContainer?.offsetWidth / canvasScale) || (window.innerWidth / canvasScale)
+        const canvasContainer = document.querySelector('.canvas-container');
+        const width = customWidth || (canvasContainer?.clientWidth / canvasScale) || (window.innerWidth / canvasScale)
         const targetItems = itemsToPack || items
         const packed = packItemsTight(targetItems, width, baseSize)
         setItems(packed)
@@ -213,8 +213,8 @@ function App() {
     }, [items, baseSize, collageId, canvasScale])
 
     const handleShuffle = useCallback(() => {
-        const canvasContainer = document.querySelector('.pull-to-refresh-container');
-        const width = (canvasContainer?.offsetWidth / canvasScale) || (window.innerWidth / canvasScale)
+        const canvasContainer = document.querySelector('.canvas-container');
+        const width = (canvasContainer?.clientWidth / canvasScale) || (window.innerWidth / canvasScale)
         const shuffled = [...items].sort(() => Math.random() - 0.5)
         const packed = packItemsTight(shuffled, width, baseSize)
         setItems(packed)

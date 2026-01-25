@@ -132,6 +132,7 @@ export function Canvas({
                 if (e.dataTransfer.files.length > 0) handleFiles(Array.from(e.dataTransfer.files))
             }}
             onClick={() => setSelectedItem(null)}
+            className="canvas-container"
         >
             <PullToRefresh onRefresh={onShuffle}>
                 <div style={{
