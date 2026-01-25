@@ -11,7 +11,7 @@ export async function onRequest(context) {
     const path = context.params.path; // path is Array of segments relative to this file
     // If /api/collages -> path is undefined or empty
 
-    // Check for "reorder" special path
+    // Check for "reorder" special path (bulk update of collage sets)
     if (path && path[0] === 'reorder' && request.method === 'POST') {
         const newSets = await request.json();
         // Validate
