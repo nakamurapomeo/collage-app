@@ -74,32 +74,14 @@ function App() {
         }
 
         setLoading(false)
-    }, [isLoggedIn, collageId, canvasScale, baseSize])
+        setLoading(false)
+    }, [isLoggedIn, collageId]) // Removed canvasScale, baseSize from dependencies
 
+    // Main Data Fetch Effect
     useEffect(() => {
-        if (!isLoggedIn) return
-        fetchCollages()
-    }, [isLoggedIn])
+        if (isLoggedIn) fetchCollages()
+    }, [isLoggedIn, collageId]) // Reacts to ID change too
 
-    // Poll for updates? Or just fetch once?
-    // KV doesn't have realtime. We'll fetch on ID change.
-    useEffect(() => {
-        if (!collageId || !isLoggedIn) return
-        setLoading(true)
-
-        // Fetch full collage data (including items)
-        apiClient.collages.get(collageId).then(({ data }) => {
-            if (data) {
-                const loadedItems = data.items || []
-                setItems(loadedItems)
-                if (loadedItems.length > 0) {
-                    const packed = packItemsTight(loadedItems, window.innerWidth / canvasScale, baseSize)
-                    setItems(packed)
-                }
-            }
-            setLoading(false)
-        })
-    }, [collageId, isLoggedIn])
 
     // Actions
     const handleLogin = async (password) => {
