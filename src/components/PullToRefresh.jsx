@@ -59,6 +59,7 @@ export function PullToRefresh({ onRefresh, children }) {
     return (
         <div
             ref={containerRef}
+            className="pull-to-refresh-container"
             style={{
                 height: '100%',
                 overflowY: 'auto',

@@ -59,7 +59,8 @@ export function Canvas({
 
         if (newItems.length > 0) {
             const updatedList = [...items, ...newItems]
-            onPack(null, updatedList) // Triggers save in App.jsx
+            const exactWidth = containerRef.current?.offsetWidth || window.innerWidth
+            onPack(exactWidth / canvasScale, updatedList)
         }
         setUploading(false)
     }

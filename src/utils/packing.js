@@ -43,11 +43,11 @@ export const packItemsTight = (itemList, containerWidth, targetRowHeight = 100) 
             });
             x += itemWidth;
         }
-        return Math.floor(rowHeight);
+        return rowHeight;
     };
 
     for (const item of itemList) {
-        const aspectRatio = item.aspect_ratio || ((item.width || 100) / (item.height || 100));
+        const aspectRatio = item.aspect_ratio || (item.width / item.height) || 1;
         rowItems.push(item);
         rowAspectSum += aspectRatio;
 
