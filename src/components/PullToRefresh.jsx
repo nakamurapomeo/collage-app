@@ -63,7 +63,8 @@ export function PullToRefresh({ onRefresh, children }) {
                 height: '100%',
                 overflowY: 'auto',
                 position: 'relative',
-                overscrollBehaviorY: 'contain' // Prevent browser refresh
+                overscrollBehaviorY: 'contain',
+                willChange: pullDistance > 0 ? 'transform' : 'auto'
             }}
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
@@ -94,10 +95,11 @@ export function PullToRefresh({ onRefresh, children }) {
             </div>
 
             {/* Content */}
-            <div style={{
+            <div style={pullDistance > 0 ? {
                 transition: 'transform 0.2s ease-out',
-                transform: `translateY(${pullDistance}px)`
-            }}>
+                transform: `translateY(${pullDistance}px)`,
+                willChange: 'transform'
+            } : {}}>
                 {children}
             </div>
         </div>

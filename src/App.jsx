@@ -18,7 +18,14 @@ function App() {
     const [loading, setLoading] = useState(true)
     const [syncStatus, setSyncStatus] = useState('saved')
     const [baseSize, setBaseSize] = useState(100)
-    const [canvasScale, setCanvasScale] = useState(1)
+    const [canvasScale, setCanvasScale] = useState(() => {
+        const saved = localStorage.getItem('collage_zoom')
+        return saved ? parseFloat(saved) : 1
+    })
+
+    useEffect(() => {
+        localStorage.setItem('collage_zoom', canvasScale)
+    }, [canvasScale])
 
     const [showTextModal, setShowTextModal] = useState(false)
     const [toast, setToast] = useState(null)
