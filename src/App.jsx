@@ -35,26 +35,46 @@ function App() {
 
     // Initialize Data (Only if logged in)
     // Initialize Data (Only if logged in)
+    // Initialize Data (Only if logged in)
     const fetchCollages = useCallback(async () => {
         if (!isLoggedIn) return
         setLoading(true)
         setGlobalError(null)
-        const { data, error } = await apiClient.collages.list()
 
-        if (error) {
-            console.error("Failed to fetch collages:", error)
-            setGlobalError(error)
+        // 1. Fetch List
+        const { data: listData, error: listError } = await apiClient.collages.list()
+
+        if (listError) {
+            console.error("Failed to fetch collages:", listError)
+            setGlobalError(listError)
             setLoading(false)
             return
         }
 
-        if (data) {
-            setCollageSets(data)
-            if (!collageId && data.length > 0) setCollageId(data[0].id)
-            else if (!collageId && data.length === 0) createCollage('My First Collage')
+        if (listData) {
+            setCollageSets(listData)
+            if (!collageId && listData.length > 0) setCollageId(listData[0].id)
+            else if (!collageId && listData.length === 0) createCollage('My First Collage')
         }
+
+        // 2. Fetch Current Collage Items (if selected or just set)
+        const targetId = collageId || (listData && listData.length > 0 ? listData[0].id : null)
+
+        if (targetId) {
+            const { data: collageData } = await apiClient.collages.get(targetId)
+            if (collageData) {
+                const loadedItems = collageData.items || []
+                setItems(loadedItems)
+                // Re-pack if needed, but usually just display is fine
+                if (loadedItems.length > 0) {
+                    const packed = packItemsTight(loadedItems, window.innerWidth / canvasScale, baseSize)
+                    setItems(packed)
+                }
+            }
+        }
+
         setLoading(false)
-    }, [isLoggedIn, collageId])
+    }, [isLoggedIn, collageId, canvasScale, baseSize])
 
     useEffect(() => {
         if (!isLoggedIn) return
