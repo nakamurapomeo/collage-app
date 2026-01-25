@@ -14,17 +14,14 @@ export function Header({
     onAddImage,
     onAddText,
     onPack,
-    onShuffle, // New
-    canvasScale, // New
-    setCanvasScale, // New
-    onRefresh, // New
-    status,
-    setCanvasScale, // New
-    onRefresh, // New
+    onShuffle,
+    canvasScale,
+    setCanvasScale,
+    onRefresh,
     status,
     fileInputRef,
-    onPaste, // New
-    onReorderSets // New
+    onPaste,
+    onReorderSets
 }) {
     const [showDropdown, setShowDropdown] = useState(false);
     const [newSetName, setNewSetName] = useState('');
