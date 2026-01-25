@@ -72,7 +72,7 @@ function App() {
 
     // Actions
     const handleLogin = async (password) => {
-        const { data, error } = await apiClient.auth.login(password)
+        const { error } = await apiClient.auth.login(password)
         if (!error) {
             setIsLoggedIn(true)
             return true
@@ -81,39 +81,60 @@ function App() {
     }
 
     const createCollage = async (name) => {
-        // Optimistic
         const newId = crypto.randomUUID()
         const newSet = { id: newId, name, created_at: new Date().toISOString() }
 
         setCollageSets(prev => [...prev, newSet])
         setCollageId(newId)
 
-        await apiClient.collages.save(newId, name, []) // Create empty
+        const { error } = await apiClient.collages.save(newId, name, [])
+        if (error) {
+            alert('Failed to create collage on server: ' + error)
+        }
     }
 
     const renameCollage = async (id, newName) => {
+        const oldSets = collageSets
         setCollageSets(prev => prev.map(s => s.id === id ? { ...s, name: newName } : s))
-        // For KV, we might need to update the LIST and the ITEM.
-        // API handles it (hopefully).
-        await apiClient.collages.save(id, newName)
+        const { error } = await apiClient.collages.save(id, newName)
+        if (error) {
+            alert('Failed to rename collage: ' + error)
+            setCollageSets(oldSets)
+        }
     }
 
     const deleteCollage = async (id) => {
         if (collageSets.length <= 1) { alert("Cannot delete the last set."); return; }
+        if (!confirm("Are you sure you want to delete this collage?")) return
+
+        const oldSets = collageSets
+        const oldId = collageId
         const remaining = collageSets.filter(s => s.id !== id)
+
         setCollageSets(remaining)
         if (collageId === id) setCollageId(remaining[0].id)
-        await apiClient.collages.delete(id)
+
+        const { error } = await apiClient.collages.delete(id)
+        if (error) {
+            alert('Failed to delete collage: ' + error)
+            setCollageSets(oldSets)
+            setCollageId(oldId)
+        }
     }
 
     const saveCollage = async (overrideItems) => {
         if (!collageId) return
         setSyncStatus('unsaved')
         const targetItems = overrideItems || items
-        // Save entire object to KV
         const currentName = collageSets.find(s => s.id === collageId)?.name || 'Collage'
-        await apiClient.collages.save(collageId, currentName, targetItems)
-        setSyncStatus('saved')
+
+        const { error } = await apiClient.collages.save(collageId, currentName, targetItems)
+        if (error) {
+            setSyncStatus('error')
+            console.error('Save error:', error)
+        } else {
+            setSyncStatus('saved')
+        }
     }
 
     const handleAddText = async ({ text, color, size }) => {

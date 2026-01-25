@@ -20,8 +20,13 @@ export function Canvas({
     const uploadImage = async (file) => {
         // Generate simple path
         const path = `${collageId}/${Date.now()}-${file.name || 'img.jpg'}`
-        const publicUrl = await apiClient.storage.upload(file, path)
-        return publicUrl
+        const { data, error } = await apiClient.storage.upload(file, path)
+        if (error) {
+            console.error('Upload failed:', error)
+            alert('Falied to upload image: ' + error)
+            return null
+        }
+        return data
     }
 
     const handleFiles = async (files) => {

@@ -84,6 +84,7 @@ export function Header({
                 {status === 'loading' && <span style={{ color: '#aaa', fontSize: '12px' }}>Loading...</span>}
                 {status === 'saved' && <span style={{ color: '#4caf50', fontSize: '12px' }}>✓</span>}
                 {status === 'unsaved' && <span style={{ color: '#ff9800', fontSize: '12px' }}>...</span>}
+                {status === 'error' && <span style={{ color: '#f44', fontSize: '12px' }} title="Save failed">✕</span>}
 
                 <div style={{ width: 1, height: 20, background: '#444', margin: '0 5px' }}></div>
 

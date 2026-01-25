@@ -23,20 +23,7 @@ export async function onRequestPost(context) {
             .sign(secret);
 
         // Set Cookie
-        const cookie = serialize('auth_token', token, {
-            httpOnly: true,
-            secure: true, // Requires HTTPS (localhost usually ok with secure:false if not https, but Pages is https)
-            // For local dev via http, we might need secure: false. Let's try secure: true first as CF Pages is HTTPS.
-            // But localhost might fail if not https? Vite preview is http.
-            // We'll relax it slightly or detect. For now simple.
-            secure: url.protocol === 'https:',
-            path: '/',
-            maxAge: 60 * 60 * 24 * 30, // 30 days
-            sameSite: 'Strict',
-        });
-
-        const url = new URL(request.url); // Re-declare URL for secure check logic above if needed, wait...
-        // Let's just rely on context.request.url
+        // Set Cookie
         const isHttps = new URL(request.url).protocol === 'https:';
 
         const finalCookie = serialize('auth_token', token, {

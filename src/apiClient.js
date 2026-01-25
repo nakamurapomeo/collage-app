@@ -1,69 +1,99 @@
-/**
- * API Client replacement for Supabase
- */
-
 const BASE_URL = '/api';
+
+const handleResponse = async (res) => {
+    if (res.ok) {
+        const data = await res.json().catch(() => null);
+        return { data, error: null };
+    }
+    const errorData = await res.json().catch(() => ({ error: 'Unknown API error' }));
+    return { data: null, error: errorData.error || 'Request failed' };
+};
 
 export const apiClient = {
     auth: {
         login: async (password) => {
-            const res = await fetch(`${BASE_URL}/auth/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ password })
-            });
-            if (res.ok) return { data: await res.json(), error: null };
-            return { data: null, error: await res.json() };
+            try {
+                const res = await fetch(`${BASE_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password })
+                });
+                return handleResponse(res);
+            } catch (e) {
+                return { data: null, error: 'Connection error' };
+            }
         },
         check: async () => {
-            const res = await fetch(`${BASE_URL}/auth/check`);
-            if (res.ok) return res.json();
-            return { loggedIn: false };
+            try {
+                const res = await fetch(`${BASE_URL}/auth/check`);
+                if (res.ok) return res.json();
+                return { loggedIn: false };
+            } catch (e) {
+                return { loggedIn: false };
+            }
         }
     },
 
     collages: {
         list: async () => {
-            const res = await fetch(`${BASE_URL}/collages`);
-            if (res.ok) return { data: await res.json(), error: null };
-            return { data: null, error: 'Failed to fetch' };
+            try {
+                const res = await fetch(`${BASE_URL}/collages`);
+                return handleResponse(res);
+            } catch (e) {
+                return { data: null, error: 'Connection error' };
+            }
         },
         get: async (id) => {
-            const res = await fetch(`${BASE_URL}/collages/${id}`);
-            if (res.ok) return { data: await res.json(), error: null };
-            return { data: null, error: 'Failed to fetch' };
+            try {
+                const res = await fetch(`${BASE_URL}/collages/${id}`);
+                return handleResponse(res);
+            } catch (e) {
+                return { data: null, error: 'Connection error' };
+            }
         },
         save: async (id, name, items) => {
-            const res = await fetch(`${BASE_URL}/collages`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id, name, items })
-            });
-            if (res.ok) return { data: await res.json(), error: null };
-            return { data: null, error: 'Failed to save' };
+            try {
+                const res = await fetch(`${BASE_URL}/collages`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id, name, items })
+                });
+                return handleResponse(res);
+            } catch (e) {
+                return { data: null, error: 'Connection error' };
+            }
         },
         delete: async (id) => {
-            const res = await fetch(`${BASE_URL}/collages/${id}`, { method: 'DELETE' });
-            return res.ok;
+            try {
+                const res = await fetch(`${BASE_URL}/collages/${id}`, { method: 'DELETE' });
+                if (res.ok) return { data: true, error: null };
+                return { data: null, error: 'Delete failed' };
+            } catch (e) {
+                return { data: null, error: 'Connection error' };
+            }
         }
     },
 
     storage: {
         upload: async (file, path) => {
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('path', path);
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('path', path);
 
-            const res = await fetch(`${BASE_URL}/upload`, {
-                method: 'POST',
-                body: formData
-            });
+                const res = await fetch(`${BASE_URL}/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
 
-            if (res.ok) {
-                const json = await res.json();
-                return json.publicUrl;
+                if (res.ok) {
+                    const json = await res.json();
+                    return { data: json.publicUrl, error: null };
+                }
+                return { data: null, error: 'Upload failed' };
+            } catch (e) {
+                return { data: null, error: 'Connection error' };
             }
-            return null;
         }
     }
 }
