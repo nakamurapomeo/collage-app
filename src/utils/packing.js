@@ -21,16 +21,21 @@ export const packItemsTight = (itemList, containerWidth, targetRowHeight = 100) 
     let rowItems = [];
     let rowAspectSum = 0;
 
+    // Optimized finalizeRow for Justified Layout
     const finalizeRow = (items, aspectSum, y, isLastRow = false) => {
         if (items.length === 0) return 0;
         let rowHeight = containerWidth / aspectSum;
+
+        // Last row handling: if it's too tall (few items), cap it at targetRowHeight
         if (isLastRow && rowHeight > targetRowHeight * 1.5) {
             rowHeight = targetRowHeight;
+            // Align left effectively (width < containerWidth)
         }
+
         let x = 0;
         for (const item of items) {
             const aspectRatio = item.aspect_ratio || (item.width / item.height) || 1;
-            // Recalculate dimensions based on row height - NO ROUNDING to keep ratio perfect
+            // Calculate precise dimensions
             const itemWidth = rowHeight * aspectRatio;
             const itemHeight = rowHeight;
 
@@ -46,22 +51,55 @@ export const packItemsTight = (itemList, containerWidth, targetRowHeight = 100) 
         return rowHeight;
     };
 
+    // Main packing loop with lookahead logic
+    let buffer = [];
+    let bufferAspect = 0;
+
     for (const item of itemList) {
         const aspectRatio = item.aspect_ratio || (item.width / item.height) || 1;
-        rowItems.push(item);
-        rowAspectSum += aspectRatio;
 
-        const potentialHeight = containerWidth / rowAspectSum;
-        if (potentialHeight <= targetRowHeight) {
-            const rowHeight = finalizeRow(rowItems, rowAspectSum, currentY);
-            currentY += rowHeight;
-            rowItems = [];
-            rowAspectSum = 0;
+        buffer.push(item);
+        bufferAspect += aspectRatio;
+
+        const currentHeight = containerWidth / bufferAspect;
+
+        // If including this item makes height smaller than target, we have a decision point.
+        if (currentHeight < targetRowHeight) {
+            // Compare current state (with new item) vs previous state (without new item)
+            // We want to be closer to targetRowHeight.
+
+            const prevAspect = bufferAspect - aspectRatio;
+            const prevHeight = containerWidth / prevAspect;
+
+            if (Math.abs(currentHeight - targetRowHeight) > Math.abs(prevHeight - targetRowHeight)) {
+                // Previous state was better (closer to target).
+                // So we should have broken the line BEFORE this item.
+                const itemToDefer = buffer.pop();
+
+                const rowHeight = finalizeRow(buffer, prevAspect, currentY);
+                currentY += rowHeight;
+
+                // Start new row with the deferred item
+                buffer = [itemToDefer];
+                bufferAspect = aspectRatio;
+            } else {
+                // Current state is better (even though it's smaller, it's closer to target than the previous huge height).
+                // Or maybe it's just accepted. 
+                // Since adding MORE items will only make it smaller (further from target), 
+                // we should finalize NOW. We've found the local optimum.
+
+                const rowHeight = finalizeRow(buffer, bufferAspect, currentY);
+                currentY += rowHeight;
+                buffer = [];
+                bufferAspect = 0;
+            }
         }
     }
 
-    if (rowItems.length > 0) {
-        const rowHeight = finalizeRow(rowItems, rowAspectSum, currentY, true);
+    // Finalize remaining items (last row)
+    if (buffer.length > 0) {
+        // Last row special flag
+        const rowHeight = finalizeRow(buffer, bufferAspect, currentY, true);
         currentY += rowHeight;
     }
 
