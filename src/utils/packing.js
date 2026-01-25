@@ -1,5 +1,5 @@
-export const packItemsTight = (itemList, containerWidth, targetRowHeight = 180) => {
-    const gutter = 4; // 仕様書に基づき 4px に設定
+export const packItemsTight = (itemList, containerWidth, targetRowHeight = 200) => {
+    const gutter = 0; // 隙間ゼロ！！！！！！！！
     const packed = [];
     let currentY = 0;
 
@@ -11,18 +11,20 @@ export const packItemsTight = (itemList, containerWidth, targetRowHeight = 180) 
         currentRow.push({ ...item, ratio });
         currentRowAspectSum += ratio;
 
-        // 仕様書ステップ2&3: 各画像をtargetRowHeightに合わせたときの幅を計算し、コンテナ幅と比較
-        const totalGuttersInRow = (currentRow.length - 1) * gutter;
-        const totalRelativeWidth = currentRowAspectSum * targetRowHeight + totalGuttersInRow;
+        const totalRelativeWidth = currentRowAspectSum * targetRowHeight;
 
         if (totalRelativeWidth >= containerWidth) {
-            // 仕様書ステップ4: 行全体の合計幅がコンテナ幅に一致するように高さをスケール調整
-            const rowHeight = (containerWidth - totalGuttersInRow) / currentRowAspectSum;
+            const rowHeight = containerWidth / currentRowAspectSum;
 
             let x = 0;
             for (let i = 0; i < currentRow.length; i++) {
                 const rowItem = currentRow[i];
-                const itemWidth = rowHeight * rowItem.ratio;
+                let itemWidth = rowHeight * rowItem.ratio;
+
+                // 行の最後の一枚を右端に吸着させる（隙間ゼロの肝）
+                if (i === currentRow.length - 1) {
+                    itemWidth = containerWidth - x;
+                }
 
                 packed.push({
                     ...rowItem,
@@ -33,16 +35,16 @@ export const packItemsTight = (itemList, containerWidth, targetRowHeight = 180) 
                     is_in_last_row: false
                 });
 
-                x += itemWidth + gutter;
+                x += itemWidth;
             }
 
-            currentY += rowHeight + gutter;
+            currentY += rowHeight;
             currentRow = [];
             currentRowAspectSum = 0;
         }
     }
 
-    // 最終行: F-Stopに則り、ジャスティファイせず targetRowHeight を維持して左寄せ
+    // 最終行（Googleフォト風にジャスティファイせず左寄せ）
     if (currentRow.length > 0) {
         let x = 0;
         for (const rowItem of currentRow) {
@@ -55,7 +57,7 @@ export const packItemsTight = (itemList, containerWidth, targetRowHeight = 180) 
                 height: targetRowHeight,
                 is_in_last_row: true
             });
-            x += itemWidth + gutter;
+            x += itemWidth;
         }
     }
 
