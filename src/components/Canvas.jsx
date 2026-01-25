@@ -71,7 +71,21 @@ export function Canvas({
             const publicUrl = await uploadImage(changes.newFile)
             setUploading(false)
             if (publicUrl) {
-                const actualChanges = { content: publicUrl, style: { ...changes.style, scale: 1 }, content_link: changes.content_link }
+                // Load image to get actual new aspect ratio
+                const img = new Image()
+                img.src = publicUrl
+                await new Promise(r => img.onload = r)
+                const aspectRatio = img.naturalWidth / img.naturalHeight
+                const width = Math.floor(baseSize * aspectRatio)
+                const height = baseSize
+
+                const actualChanges = {
+                    content: publicUrl,
+                    width: width || 200,
+                    height: height || 200,
+                    style: { ...changes.style, scale: 1 },
+                    content_link: changes.content_link
+                }
                 updatedList = items.map(i => i.id === id ? { ...i, ...actualChanges } : i)
                 setItems(updatedList)
             }
