@@ -249,6 +249,7 @@ function App() {
                             id: crypto.randomUUID(),
                             collage_id: collageId, type: 'image', content: publicUrl,
                             x: 0, y: 0, width: width || 200, height: baseSize || 200,
+                            aspect_ratio: aspectRatio,
                             z_index: items.length + 1, style: {}
                         }
                         const newItems = [...items, newItem]

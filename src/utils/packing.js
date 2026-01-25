@@ -29,7 +29,7 @@ export const packItemsTight = (itemList, containerWidth, targetRowHeight = 100) 
         }
         let x = 0;
         for (const item of items) {
-            const aspectRatio = item.aspect_ratio || ((item.width || 100) / (item.height || 100));
+            const aspectRatio = item.aspect_ratio || (item.width / item.height) || 1;
             // Recalculate dimensions based on row height
             const itemWidth = Math.floor(rowHeight * aspectRatio);
             const itemHeight = Math.floor(rowHeight);

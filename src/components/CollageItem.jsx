@@ -29,7 +29,7 @@ export function CollageItem({ item, updateItem, deleteItem, onSelect }) {
                     style={{
                         width: '100%',
                         height: '100%',
-                        objectFit: 'cover',
+                        objectFit: 'fill',
                         pointerEvents: 'none',
                         boxShadow: '0 4px 6px rgba(0,0,0,0.3)',
                         display: 'block',

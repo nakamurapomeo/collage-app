@@ -50,6 +50,7 @@ export function Canvas({
                         id: crypto.randomUUID(), // Local ID generation
                         collage_id: collageId, type: 'image', content: publicUrl,
                         x: 0, y: 0, width: width || 200, height: baseSize || 200,
+                        aspect_ratio: aspectRatio,
                         z_index: items.length + newItems.length + 1, style: {}
                     })
                 }
@@ -83,6 +84,7 @@ export function Canvas({
                     content: publicUrl,
                     width: width || 200,
                     height: height || 200,
+                    aspect_ratio: aspectRatio,
                     style: { ...changes.style, scale: 1 },
                     content_link: changes.content_link
                 }
