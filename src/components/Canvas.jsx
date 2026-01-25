@@ -253,7 +253,7 @@ export function Canvas({
             <PullToRefresh onRefresh={onShuffle}>
                 <div style={{
                     minHeight: 'calc(100vh - 60px + 1px)',
-                    height: totalHeight > 0 ? `${totalHeight * canvasScale + 400}px` : '100%', // Increased buffer
+                    height: totalHeight > 0 ? `${totalHeight * canvasScale + 60}px` : '100%', // Reduced buffer per request
                     position: 'relative',
                     paddingBottom: '40vh' // Extra space for better scroll feel
                 }}>

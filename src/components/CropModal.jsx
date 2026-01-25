@@ -31,9 +31,13 @@ export function CropModal({ item, onClose, onSave, onDelete, onRandom }) {
         const handleTouchMove = (e) => {
             if (e.touches.length === 2 && initialPinchDist) {
                 const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY)
-                if (Math.abs(dist - initialPinchDist) > 10) {
-                    setScale(prev => Math.max(0.5, Math.min(3, prev + (dist - initialPinchDist > 0 ? 0.02 : -0.02))))
-                    setInitialPinchDist(dist)
+                const delta = dist - initialPinchDist
+
+                // More responsive: Remove threshold, use proportional factor
+                if (Math.abs(delta) > 1) { // Minimal noise filter
+                    const zoomFactor = 0.005 // Sensitivity
+                    setScale(prev => Math.max(0.5, Math.min(3, prev + (delta * zoomFactor))))
+                    setInitialPinchDist(dist) // Reset to allow continuous smooth zoom
                 }
             }
         }
@@ -88,12 +92,18 @@ export function CropModal({ item, onClose, onSave, onDelete, onRandom }) {
         if (corner === 'sw') { setCropStart({ x: x2, y: y1 }); setCropEnd({ x: x1, y: y2 }); }
         if (corner === 'se') { setCropStart({ x: x1, y: y1 }); setCropEnd({ x: x2, y: y2 }); }
     }
-    const handleMouseMove = (e) => {
+    const handleMove = (clientX, clientY) => {
         if (!isCropping || !imgRef.current) return
         const rect = imgRef.current.getBoundingClientRect()
-        const clampedX = Math.max(0, Math.min(e.clientX - rect.left, rect.width))
-        const clampedY = Math.max(0, Math.min(e.clientY - rect.top, rect.height))
+        const clampedX = Math.max(0, Math.min(clientX - rect.left, rect.width))
+        const clampedY = Math.max(0, Math.min(clientY - rect.top, rect.height))
         setCropEnd({ x: clampedX, y: clampedY })
+    }
+
+    const handleMouseMove = (e) => { handleMove(e.clientX, e.clientY) }
+    const handleTouchMoveCrop = (e) => {
+        if (e.touches.length !== 1) return
+        handleMove(e.touches[0].clientX, e.touches[0].clientY)
     }
     const handleMouseUp = () => setIsCropping(false)
 
@@ -154,7 +164,10 @@ export function CropModal({ item, onClose, onSave, onDelete, onRandom }) {
                 <div style={{ flex: 1, background: '#080808', position: 'relative', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'crosshair', userSelect: 'none' }} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
                     <div ref={containerRef} style={{ position: 'relative', transform: `scale(${scale})`, transformOrigin: 'center', boxShadow: '0 0 50px rgba(0,0,0,0.5)', display: 'flex' }}>
                         <img ref={imgRef} src={previewUrl} crossOrigin="anonymous" style={{ maxHeight: 'calc(90vh - 160px)', maxWidth: '95vw', display: 'block', pointerEvents: 'none' }} alt="Edit" draggable={false} />
-                        <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', cursor: 'crosshair' }} onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} />
+                        <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', cursor: 'crosshair', touchAction: 'none' }}
+                            onMouseDown={handleMouseDown} onMouseMove={handleMouseMove}
+                            onTouchStart={handleTouchStartCrop} onTouchMove={handleTouchMoveCrop}
+                        />
                         {cropStart && cropEnd && (
                             <div style={{
                                 position: 'absolute', left: Math.min(cropStart.x, cropEnd.x) / scale, top: Math.min(cropStart.y, cropEnd.y) / scale,
@@ -164,8 +177,8 @@ export function CropModal({ item, onClose, onSave, onDelete, onRandom }) {
                                 {/* Resize Handles */}
                                 {['nw', 'ne', 'sw', 'se'].map(pos => (
                                     <div key={pos}
-                                        onMouseDown={(e) => startResize(e, pos)}
-                                        onTouchStart={(e) => startResize(e.touches[0], pos)}
+                                        onMouseDown={(e) => { e.stopPropagation(); e.preventDefault(); startResize(e.clientX, e.clientY, pos) }}
+                                        onTouchStart={(e) => { e.stopPropagation(); e.preventDefault(); startResize(e.touches[0].clientX, e.touches[0].clientY, pos) }}
                                         style={{
                                             position: 'absolute',
                                             width: '20px', height: '20px', background: 'white', borderRadius: '50%',

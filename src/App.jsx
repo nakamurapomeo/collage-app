@@ -108,23 +108,57 @@ function App() {
             // Fetch current collage items silently
             const { data: collageData } = await apiClient.collages.get(collageId)
             if (collageData && Array.isArray(collageData.items)) {
-                // simple check to avoid unnecessary state updates if nothing changed
-                const currentItemsStr = JSON.stringify(items)
-                const serverItemsStr = JSON.stringify(collageData.items)
+                const serverItems = collageData.items
+                // Check for diffs
+                const currentIds = new Set(items.map(i => i.id))
+                const serverIds = new Set(serverItems.map(i => i.id))
 
-                if (currentItemsStr !== serverItemsStr) {
-                    // Update items and re-pack
-                    // User note: "Image order is fine to stay as is".
-                    // But if we have NEW items, we need to show them.
-                    // If we blindly replacing `items`, we lose local scroll/state? No, React handles it.
-                    // For now, full sync to ensure consistency.
-                    const loadedItems = collageData.items
-                    const container = document.querySelector('.pull-to-refresh-container') || document.querySelector('.canvas-container');
-                    const containerW = container?.clientWidth || window.innerWidth;
-                    const safeW = Math.max(containerW, 320);
-                    const packingWidth = safeW / canvasScale;
-                    const packed = packItemsTight(loadedItems, packingWidth, baseSize)
-                    setItems(packed)
+                // If strictly equal sets and we assume no content updates needed (just order), skip.
+                // But if new items added by others, we want them.
+                // Equality Check:
+                const areIdsSame = currentIds.size === serverIds.size && [...currentIds].every(id => serverIds.has(id))
+
+                if (!areIdsSame) {
+                    // Smart Merge:
+                    // 1. Keep local items that still exist on server (preserve x,y,width,height)
+                    // 2. Add new items from server
+                    // 3. Remove items not on server
+
+                    const mergedItems = []
+                    const newItems = []
+
+                    // Helper map for local items
+                    const localMap = new Map(items.map(i => [i.id, i]))
+
+                    serverItems.forEach(sItem => {
+                        if (localMap.has(sItem.id)) {
+                            // Exists locally: Keep local geometry/order, but maybe update content if needed?
+                            // For now, prioritize local state completely for existing items (preserves sort)
+                            mergedItems.push(localMap.get(sItem.id));
+                        } else {
+                            // New item from server
+                            newItems.push(sItem);
+                        }
+                    })
+
+                    // If we have new items, we need to pack them?
+                    // Or just append them?
+                    // If we append, they might overlap.
+                    // Let's rely on packing logic only for new items?
+                    // Or just setItems and let user decide?
+                    // Recommendation: Pack new items at the end or re-pack everything?
+                    // "Order is fine to stay as is" -> Keep existing positions.
+                    // The problem is where to put new items.
+                    // Let's pack everything but try to respect existing? No, packing is deterministic.
+                    // If we re-pack, order changes.
+
+                    // Strategy: Just add new items to the list. 
+                    // The Canvas handles them naturally? No, they need x,y.
+                    // Server usually sends x,y. If another user added them, they have x,y.
+                    // So we just use server x,y for new items.
+
+                    const finalItems = [...mergedItems, ...newItems]
+                    setItems(finalItems)
                 }
             }
         }, 5000) // Poll every 5 seconds
