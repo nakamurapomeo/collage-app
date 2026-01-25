@@ -10,6 +10,7 @@ import JSZip from 'jszip'
 function App() {
     const [isLoggedIn, setIsLoggedIn] = useState(false)
     const [authChecking, setAuthChecking] = useState(true)
+    const [globalError, setGlobalError] = useState(null)
 
     const [collageId, setCollageId] = useState(null)
     const [collageSets, setCollageSets] = useState([])
@@ -37,9 +38,14 @@ function App() {
         if (!isLoggedIn) return
 
         async function fetchCollages() {
-            const { data, error } = await apiClient.collages.list() // Modified to fetch list
-            // Note: KV data structure might differ from SQL.
-            // We start fresh.
+            setGlobalError(null)
+            const { data, error } = await apiClient.collages.list()
+
+            if (error) {
+                console.error("Failed to fetch collages:", error)
+                setGlobalError(error)
+                return
+            }
 
             if (data) {
                 setCollageSets(data)
@@ -75,9 +81,9 @@ function App() {
         const { error } = await apiClient.auth.login(password)
         if (!error) {
             setIsLoggedIn(true)
-            return true
+            return { success: true }
         }
-        return false
+        return { success: false, error }
     }
 
     const createCollage = async (name) => {
@@ -176,6 +182,17 @@ function App() {
 
     if (authChecking) return <div style={{ color: 'white', padding: 20 }}>Loading...</div>
     if (!isLoggedIn) return <Login onLogin={handleLogin} />
+
+    if (globalError) return (
+        <div style={{ color: 'white', padding: 40, textAlign: 'center' }}>
+            <h2 style={{ color: '#ff4444' }}>Connection Error</h2>
+            <p>{globalError}</p>
+            <p style={{ color: '#888', fontSize: '0.9em' }}>
+                Please check your Cloudflare settings (KV Bindings, Environment Variables).
+            </p>
+            <button onClick={() => location.reload()} style={{ padding: '10px 20px', marginTop: 20, cursor: 'pointer' }}>Retry</button>
+        </div>
+    )
 
     const currentSet = collageSets.find(s => s.id === collageId)
     if (!collageId) return <div style={{ color: 'white', padding: 20 }}>Loading Collage...</div>

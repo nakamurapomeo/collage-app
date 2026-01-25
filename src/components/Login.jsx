@@ -11,10 +11,10 @@ export function Login({ onLogin }) {
         setError('')
 
         // Call onLogin prop which calls API
-        const success = await onLogin(password)
+        const result = await onLogin(password)
 
-        if (!success) {
-            setError('Incorrect password')
+        if (!result.success) {
+            setError(result.error || 'Incorrect password')
             setLoading(false)
         }
         // If success, parent handles transition
