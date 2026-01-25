@@ -246,7 +246,28 @@ function App() {
         // Let's add `apiClient.collages.reorder(newSets)`
         await apiClient.collages.reorder(newSets)
     };
-    const handleImportZip = async () => { /* ... */ }
+    const handleExportZip = async () => {
+        const zip = new JSZip();
+        for (const item of items) {
+            if (item.type === 'image') {
+                try {
+                    const res = await fetch(item.content);
+                    const blob = await res.blob();
+                    const ext = item.content.split('.').pop().split('?')[0] || 'png';
+                    zip.file(`image-${item.id}.${ext}`, blob);
+                } catch (e) { console.error(e); }
+            }
+        }
+        const content = await zip.generateAsync({ type: 'blob' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(content);
+        link.download = `collage-${collageId}.zip`;
+        link.click();
+    };
+
+    const handleImportZip = async (file) => {
+        alert("Import ZIP is coming soon! For now, please add images directly.");
+    };
 
     if (authChecking) return <div style={{ color: 'white', padding: 20 }}>Loading...</div>
     if (!isLoggedIn) return <Login onLogin={handleLogin} />
