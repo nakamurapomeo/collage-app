@@ -17,6 +17,55 @@ export function Canvas({
     // Update ref when onPack changes (which happens when items change)
     useEffect(() => { onPackRef.current = onPack }, [onPack])
 
+    // Pinch Zoom Logic
+    const [initialPinchDist, setInitialPinchDist] = useState(null);
+    useEffect(() => {
+        const handleTouchStart = (e) => {
+            if (e.touches.length === 2) {
+                const dist = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+                setInitialPinchDist(dist);
+            }
+        };
+        const handleTouchMove = (e) => {
+            if (e.touches.length === 2 && initialPinchDist) {
+                const dist = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+                const delta = dist - initialPinchDist;
+                // Sensible zoom speed
+                if (Math.abs(delta) > 10) {
+                    // Determine direction
+                    const scaleChange = delta > 0 ? 0.02 : -0.02;
+                    setCanvasScale(prev => Math.max(0.1, Math.min(3, prev + scaleChange)));
+                    setInitialPinchDist(dist); // Reset to avoid acceleration
+                }
+            }
+        };
+        const handleTouchEnd = () => {
+            setInitialPinchDist(null);
+        };
+
+        const container = containerRef.current;
+        if (container) {
+            // Passive false to allow preventing default if needed, but we usually want default scroll if not pinching
+            // For zoom checking, simple listener
+            container.addEventListener('touchstart', handleTouchStart);
+            container.addEventListener('touchmove', handleTouchMove);
+            container.addEventListener('touchend', handleTouchEnd);
+        }
+        return () => {
+            if (container) {
+                container.removeEventListener('touchstart', handleTouchStart);
+                container.removeEventListener('touchmove', handleTouchMove);
+                container.removeEventListener('touchend', handleTouchEnd);
+            }
+        }
+    }, [initialPinchDist, setCanvasScale]);
+
     useEffect(() => {
         const handleResize = () => {
             onPackRef.current()
@@ -76,7 +125,64 @@ export function Canvas({
     const updateItem = async (id, changes, saveToDb = true) => {
         let updatedList = items;
 
-        if (changes.newFile) {
+        if (changes.isCopy && changes.newFile) {
+            // Handle Copy - Create New Item
+            setUploading(true)
+            const publicUrl = await uploadImage(changes.newFile)
+            setUploading(false)
+            if (publicUrl) {
+                const img = new Image()
+                img.src = publicUrl
+                await new Promise(r => img.onload = r)
+                const aspectRatio = img.naturalWidth / img.naturalHeight
+                const width = baseSize * aspectRatio // Float precision
+
+                // Find original to copy styles? or just default?
+                // The newFile is the cropped blob.
+
+                const newItem = {
+                    id: crypto.randomUUID(),
+                    collage_id: collageId, type: 'image', content: publicUrl,
+                    x: 0, y: 0, width: width || 200, height: baseSize || 200,
+                    aspect_ratio: aspectRatio,
+                    z_index: items.length + 1,
+                    style: { ...changes.style, scale: 1 } // Reset scale for cropped image
+                }
+
+                updatedList = [...items, newItem];
+                // Check if we need to pack immediately?
+                // Probably yes.
+                const container = document.querySelector('.pull-to-refresh-container') || document.querySelector('.canvas-container');
+                const containerW = container?.clientWidth || window.innerWidth;
+                const safeW = Math.max(containerW, 320);
+                const packingWidth = (safeW - 40) / canvasScale;
+                const packed = await new Promise(resolve => {
+                    // Determine if we have access to packItemsTight here?
+                    // onPack handles packing logic passed from App.
+                    // But onPack expects (width, list).
+                    // We can just call onPack(packingWidth, updatedList) but onPack in App calls setItems.
+                    // So we should just call onPack.
+                    resolve(updatedList)
+                })
+                // Wait, onPack in App.jsx sets items. We should pass the LIST to onPack.
+
+                // But wait, updateItem logic usually setsItems itself?
+                // Line 97: setItems(updatedList).
+                // So we should do that.
+
+                // For layout re-calc, we should call onPack logic?
+                // existing logic for handleFiles calls onPack.
+
+                // Let's just append and let onPack handle it via the ref? 
+                // App.jsx logic for handleFiles calls onPack explicitly.
+
+                // Here we can just call setItems and then onPack.
+                // onPack is passed as prop.
+                onPack(packingWidth, updatedList);
+                return; // onPack will set items and save
+            }
+        }
+        else if (changes.newFile) {
             setUploading(true)
             const publicUrl = await uploadImage(changes.newFile)
             setUploading(false)

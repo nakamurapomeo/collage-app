@@ -162,14 +162,7 @@ export function Header({
                 {/* Refresh Button */}
                 <button onClick={onRefresh} title="Refresh" style={buttonStyle}>🔄</button>
 
-                {/* Zoom Controls (Hidden on mobile to save space) */}
-                {!isMobile && (
-                    <div style={{ display: 'flex', alignItems: 'center', background: '#333', borderRadius: '20px', padding: '2px 8px' }}>
-                        <button onClick={() => setCanvasScale(s => Math.max(0.1, s - 0.1))} style={{ fontSize: '1rem', background: 'transparent', color: 'white', padding: '0 5px', border: 'none', cursor: 'pointer' }}>-</button>
-                        <span style={{ color: 'white', fontSize: '0.8rem', minWidth: '35px', textAlign: 'center' }}>{Math.round(canvasScale * 100)}%</span>
-                        <button onClick={() => setCanvasScale(s => Math.min(3, s + 0.1))} style={{ fontSize: '1rem', background: 'transparent', color: 'white', padding: '0 5px', border: 'none', cursor: 'pointer' }}>+</button>
-                    </div>
-                )}
+                {/* Zoom Controls Removed */}
 
                 {/* Main Actions */}
                 {!isMobile && (

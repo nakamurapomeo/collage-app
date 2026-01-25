@@ -48,10 +48,12 @@ export function CropModal({ item, onClose, onSave, onDelete, onRandom }) {
     }
     const handleMouseUp = () => setIsCropping(false)
 
-    const handleApplyCrop = async () => {
+    const handleApplyCrop = async (isCopy = false) => {
         try {
             if (!cropStart || !cropEnd || !imgRef.current) return
+            // If just clicking apply without selection (if possible), or minimal drag
             if (Math.abs(cropEnd.x - cropStart.x) < 20) return
+
             const img = imgRef.current
             const rect = img.getBoundingClientRect()
             const x = Math.min(cropStart.x, cropEnd.x)
@@ -66,7 +68,12 @@ export function CropModal({ item, onClose, onSave, onDelete, onRandom }) {
             ctx.drawImage(img, x * factorX, y * factorY, canvas.width, canvas.height, 0, 0, canvas.width, canvas.height)
             canvas.toBlob(async (blob) => {
                 if (!blob) { alert("Crop failed"); return; }
-                onSave(item.id, { newFile: blob, style: { ...item.style, scale: 1 } })
+
+                if (isCopy === true) {
+                    onSave(null, { newFile: blob, isCopy: true, originalId: item.id }) // Special signal for copy
+                } else {
+                    onSave(item.id, { newFile: blob, style: { ...item.style, scale: 1 } })
+                }
                 onClose()
             }, 'image/jpeg', 0.95)
         } catch (e) { alert("Crop failed: " + e.message) }
@@ -151,11 +158,24 @@ export function CropModal({ item, onClose, onSave, onDelete, onRandom }) {
                             </div>
                         </div>
                     </div>
-                    <div style={{ display: 'flex', gap: '15px', marginTop: '20px', justifyContent: 'flex-end' }}>
-                        <button onClick={() => { if (confirm('Delete image?')) onDelete(item.id); }} style={{ background: '#331111', color: '#ff6666', border: '1px solid #552222' }}>🗑️ Delete</button>
+                    <div style={{ display: 'flex', gap: '15px', marginTop: '20px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                        <button onClick={() => { if (confirm('Delete image?')) onDelete(item.id); }} style={{ background: '#331111', color: '#ff6666', border: '1px solid #552222', padding: '10px 20px' }}>🗑️ Delete</button>
                         <div style={{ flex: 1 }}></div>
-                        <button onClick={handleApplyCrop} disabled={!cropStart || !cropEnd} style={{ background: cropStart ? '#fff' : '#333', color: cropStart ? '#000' : '#666', fontWeight: 'bold', padding: '10px 30px' }}>✂️ Crop</button>
-                        <button onClick={handleSaveMeta} style={{ background: '#ffd700', color: '#000', fontWeight: 'bold', padding: '10px 40px', fontSize: '1.1rem' }}>Save</button>
+
+                        {/* Copy Button */}
+                        <button onClick={() => handleApplyCrop(true)} disabled={!cropStart || !cropEnd} style={{ background: '#0077ff', color: 'white', fontWeight: 'bold', padding: '10px 20px', opacity: (!cropStart || !cropEnd) ? 0.5 : 1 }}>
+                            📑 Copy & Save
+                        </button>
+
+                        {/* Toggle Crop Button */}
+                        <button
+                            onClick={isCropping ? handleApplyCrop : () => { setIsCropping(true); setCropStart({ x: 0, y: 0 }); /* Dummy start to enable mode? No, handled by mouse. Just prompt. */ }}
+                            style={{ background: cropStart ? '#fff' : '#333', color: cropStart ? '#000' : '#888', fontWeight: 'bold', padding: '10px 30px' }}
+                        >
+                            {cropStart ? '✂️ Apply Crop' : '✂️ Crop Mode'}
+                        </button>
+
+                        <button onClick={handleSaveMeta} style={{ background: '#ffd700', color: '#000', fontWeight: 'bold', padding: '10px 30px', fontSize: '1.1rem' }}>Done</button>
                     </div>
                 </div>
             </div>
