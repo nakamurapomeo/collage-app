@@ -42,8 +42,6 @@ function App() {
     }, [])
 
     // Initialize Data (Only if logged in)
-    // Initialize Data (Only if logged in)
-    // Initialize Data (Only if logged in)
     const fetchCollages = useCallback(async () => {
         if (!isLoggedIn) return
         setLoading(true)
@@ -74,7 +72,6 @@ function App() {
                 const loadedItems = collageData.items || []
                 setItems(loadedItems)
                 // Re-pack if needed, but usually just display is fine
-                // Re-pack if needed, but usually just display is fine
                 if (loadedItems.length > 0) {
                     const container = document.querySelector('.pull-to-refresh-container') || document.querySelector('.canvas-container');
                     const containerW = container?.clientWidth || window.innerWidth;
@@ -83,12 +80,10 @@ function App() {
                     const packingWidth = safeW / canvasScale; // Full width (trust box-sizing)
                     const packed = packItemsTight(loadedItems, packingWidth, baseSize)
                     setItems(packed)
-                    setItems(packed)
                 }
             }
         }
 
-        setLoading(false)
         setLoading(false)
     }, [isLoggedIn, collageId]) // Removed canvasScale, baseSize from dependencies
 
@@ -114,48 +109,42 @@ function App() {
                 const serverIds = new Set(serverItems.map(i => i.id))
 
                 // If strictly equal sets and we assume no content updates needed (just order), skip.
-                // But if new items added by others, we want them.
-                // Equality Check:
                 const areIdsSame = currentIds.size === serverIds.size && [...currentIds].every(id => serverIds.has(id))
 
-                if (!areIdsSame) {
-                    // Smart Merge:
-                    // 1. Keep local items that still exist on server (preserve x,y,width,height)
-                    // 2. Add new items from server
-                    // 3. Remove items not on server
+                // Deep difference check for content (URL, style, etc.) even if IDs match
+                let contentChanged = !areIdsSame;
+                if (!contentChanged) {
+                    contentChanged = items.some(localItem => {
+                        const serverItem = serverItems.find(s => s.id === localItem.id)
+                        if (!serverItem) return true;
+                        return localItem.content !== serverItem.content ||
+                            JSON.stringify(localItem.style) !== JSON.stringify(serverItem.style) ||
+                            localItem.aspect_ratio !== serverItem.aspect_ratio;
+                    })
+                }
 
+                if (contentChanged) {
+                    // Smart Merge:
                     const mergedItems = []
                     const newItems = []
-
-                    // Helper map for local items
                     const localMap = new Map(items.map(i => [i.id, i]))
 
                     serverItems.forEach(sItem => {
                         if (localMap.has(sItem.id)) {
-                            // Exists locally: Keep local geometry/order, but maybe update content if needed?
-                            // For now, prioritize local state completely for existing items (preserves sort)
-                            mergedItems.push(localMap.get(sItem.id));
+                            // Exists locally: Merge content/style updates into local geometry
+                            const localItem = localMap.get(sItem.id)
+                            mergedItems.push({
+                                ...localItem,
+                                content: sItem.content,
+                                content_link: sItem.content_link,
+                                style: sItem.style,
+                                aspect_ratio: sItem.aspect_ratio
+                            });
                         } else {
                             // New item from server
                             newItems.push(sItem);
                         }
                     })
-
-                    // If we have new items, we need to pack them?
-                    // Or just append them?
-                    // If we append, they might overlap.
-                    // Let's rely on packing logic only for new items?
-                    // Or just setItems and let user decide?
-                    // Recommendation: Pack new items at the end or re-pack everything?
-                    // "Order is fine to stay as is" -> Keep existing positions.
-                    // The problem is where to put new items.
-                    // Let's pack everything but try to respect existing? No, packing is deterministic.
-                    // If we re-pack, order changes.
-
-                    // Strategy: Just add new items to the list. 
-                    // The Canvas handles them naturally? No, they need x,y.
-                    // Server usually sends x,y. If another user added them, they have x,y.
-                    // So we just use server x,y for new items.
 
                     const finalItems = [...mergedItems, ...newItems]
                     setItems(finalItems)
