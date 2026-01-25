@@ -112,9 +112,18 @@ function App() {
                 const serverItemsStr = JSON.stringify(serverItems)
 
                 if (currentItemsStr !== serverItemsStr) {
-                    // Difference found (content, position, new items, deletions)
-                    // Fully adopt server state to ensure synchronization
-                    setItems(serverItems)
+                    // Difference found:
+                    // 1. Take Server Items to get the correct ORDER and CONTENT (additions, deletions, edits)
+                    // 2. But REPACK locally to fit this device's screen (Responsive)
+                    // 3. Do NOT save back to server automatically (prevents loop)
+
+                    const container = document.querySelector('.pull-to-refresh-container') || document.querySelector('.canvas-container');
+                    const containerW = container?.clientWidth || window.innerWidth;
+                    const safeW = Math.max(containerW, 320);
+                    const packingWidth = safeW / canvasScale;
+
+                    const packed = packItemsTight(serverItems, packingWidth, baseSize)
+                    setItems(packed)
                 }
             }
         }, 5000) // Poll every 5 seconds
@@ -212,7 +221,7 @@ function App() {
         await saveCollage(packed)
     }
 
-    const handlePack = useCallback((customWidth = null, itemsToPack = null) => {
+    const handlePack = useCallback((customWidth = null, itemsToPack = null, shouldSave = true) => {
         const container = document.querySelector('.pull-to-refresh-container') || document.querySelector('.canvas-container');
         const containerW = customWidth || container?.clientWidth || window.innerWidth;
         const safeW = Math.max(containerW, 320);
@@ -220,7 +229,7 @@ function App() {
         const targetItems = itemsToPack || items
         const packed = packItemsTight(targetItems, width, 180) // Target height from specification
         setItems(packed)
-        saveCollage(packed)
+        if (shouldSave) saveCollage(packed)
     }, [items, collageId, canvasScale])
 
     const handleShuffle = useCallback(() => {

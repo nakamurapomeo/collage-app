@@ -68,11 +68,12 @@ export function Canvas({
 
     useEffect(() => {
         const handleResize = () => {
-            onPackRef.current()
+            // Resize should repack for display but NOT save to server (prevents overwriting server layout with local width)
+            onPackRef.current(null, null, false)
         }
         window.addEventListener('resize', handleResize)
 
-        const timer = setTimeout(() => { onPackRef.current() }, 300)
+        const timer = setTimeout(() => { onPackRef.current(null, null, false) }, 300)
         return () => {
             clearTimeout(timer)
             window.removeEventListener('resize', handleResize)
