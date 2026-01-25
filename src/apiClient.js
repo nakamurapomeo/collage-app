@@ -37,7 +37,7 @@ export const apiClient = {
     collages: {
         list: async () => {
             try {
-                const res = await fetch(`${BASE_URL}/collages`);
+                const res = await fetch(`${BASE_URL}/collages?t=${Date.now()}`);
                 return handleResponse(res);
             } catch (e) {
                 return { data: null, error: 'Connection error' };
@@ -45,7 +45,7 @@ export const apiClient = {
         },
         get: async (id) => {
             try {
-                const res = await fetch(`${BASE_URL}/collages/${id}`);
+                const res = await fetch(`${BASE_URL}/collages/${id}?t=${Date.now()}`);
                 return handleResponse(res);
             } catch (e) {
                 return { data: null, error: 'Connection error' };

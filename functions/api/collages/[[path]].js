@@ -18,13 +18,27 @@ export async function onRequest(context) {
             // Note: KV list is eventual consistent.
             // We'll treat `collage_list` key as the index.
             const listVal = await env.COLLAGE_KV.get('collage_list', { type: 'json' });
-            return new Response(JSON.stringify(listVal || []), { headers: { 'Content-Type': 'application/json' } });
+            return new Response(JSON.stringify(listVal || []), {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+                    'Pragma': 'no-cache',
+                    'Expires': '0'
+                }
+            });
         } else {
             // Get specific collage
             const id = path[0];
             const data = await env.COLLAGE_KV.get(`collage:${id}`, { type: 'json' });
             if (!data) return new Response(JSON.stringify({ error: 'Not Found' }), { status: 404 });
-            return new Response(JSON.stringify(data), { headers: { 'Content-Type': 'application/json' } });
+            return new Response(JSON.stringify(data), {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+                    'Pragma': 'no-cache',
+                    'Expires': '0'
+                }
+            });
         }
     }
 
