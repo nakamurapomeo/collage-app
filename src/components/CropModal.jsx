@@ -19,6 +19,32 @@ export function CropModal({ item, onClose, onSave, onDelete, onRandom }) {
         setPreviewUrl(item.content + (item.content.includes('?') ? '&' : '?') + 't=' + Date.now())
     }, [item])
 
+    // Pinch Zoom Logic for Preview (similar to Canvas)
+    const [initialPinchDist, setInitialPinchDist] = useState(null)
+    useEffect(() => {
+        const handleTouchStart = (e) => {
+            if (e.touches.length === 2) {
+                const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY)
+                setInitialPinchDist(dist)
+            }
+        }
+        const handleTouchMove = (e) => {
+            if (e.touches.length === 2 && initialPinchDist) {
+                const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY)
+                if (Math.abs(dist - initialPinchDist) > 10) {
+                    setScale(prev => Math.max(0.5, Math.min(3, prev + (dist - initialPinchDist > 0 ? 0.02 : -0.02))))
+                    setInitialPinchDist(dist)
+                }
+            }
+        }
+        const handleTouchEnd = () => setInitialPinchDist(null)
+        const el = containerRef.current?.parentElement
+        if (el) {
+            el.addEventListener('touchstart', handleTouchStart); el.addEventListener('touchmove', handleTouchMove); el.addEventListener('touchend', handleTouchEnd)
+        }
+        return () => { if (el) { el.removeEventListener('touchstart', handleTouchStart); el.removeEventListener('touchmove', handleTouchMove); el.removeEventListener('touchend', handleTouchEnd) } }
+    }, [initialPinchDist])
+
     const handleLinkOpen = () => { if (link) window.open(link, '_blank') }
 
     const handlePasteLink = async () => {
@@ -37,7 +63,30 @@ export function CropModal({ item, onClose, onSave, onDelete, onRandom }) {
         const rect = imgRef.current.getBoundingClientRect()
         const x = e.clientX - rect.left
         const y = e.clientY - rect.top
+
+        // If clicking on resize handle (handled by specific onMouseDowns), ignore
+        // If clicking outside handles, start new crop or reset
         setCropStart({ x, y }); setCropEnd({ x, y }); setIsCropping(true)
+    }
+
+    // Resize Handler for Knobs
+    const startResize = (e, corner) => {
+        e.stopPropagation(); e.preventDefault()
+        if (!cropStart || !cropEnd) return
+        setIsCropping(true)
+
+        // Calculate current bounds
+        const x1 = Math.min(cropStart.x, cropEnd.x)
+        const y1 = Math.min(cropStart.y, cropEnd.y)
+        const x2 = Math.max(cropStart.x, cropEnd.x)
+        const y2 = Math.max(cropStart.y, cropEnd.y)
+
+        // Set 'fixed' anchor point to the OPPOSITE corner
+        // Set 'moving' point (cropEnd) to the current corner's position, ready to drag
+        if (corner === 'nw') { setCropStart({ x: x2, y: y2 }); setCropEnd({ x: x1, y: y1 }); }
+        if (corner === 'ne') { setCropStart({ x: x1, y: y2 }); setCropEnd({ x: x2, y: y1 }); }
+        if (corner === 'sw') { setCropStart({ x: x2, y: y1 }); setCropEnd({ x: x1, y: y2 }); }
+        if (corner === 'se') { setCropStart({ x: x1, y: y1 }); setCropEnd({ x: x2, y: y2 }); }
     }
     const handleMouseMove = (e) => {
         if (!isCropping || !imgRef.current) return
@@ -111,7 +160,22 @@ export function CropModal({ item, onClose, onSave, onDelete, onRandom }) {
                                 position: 'absolute', left: Math.min(cropStart.x, cropEnd.x) / scale, top: Math.min(cropStart.y, cropEnd.y) / scale,
                                 width: Math.abs(cropEnd.x - cropStart.x) / scale, height: Math.abs(cropEnd.y - cropStart.y) / scale,
                                 border: `${2 / scale}px solid white`, boxShadow: `0 0 0 9999px rgba(0, 0, 0, 0.6)`, pointerEvents: 'none'
-                            }} />
+                            }}>
+                                {/* Resize Handles */}
+                                {['nw', 'ne', 'sw', 'se'].map(pos => (
+                                    <div key={pos}
+                                        onMouseDown={(e) => startResize(e, pos)}
+                                        onTouchStart={(e) => startResize(e.touches[0], pos)}
+                                        style={{
+                                            position: 'absolute',
+                                            width: '20px', height: '20px', background: 'white', borderRadius: '50%',
+                                            top: pos.includes('n') ? '-10px' : 'auto', bottom: pos.includes('s') ? '-10px' : 'auto',
+                                            left: pos.includes('w') ? '-10px' : 'auto', right: pos.includes('e') ? '-10px' : 'auto',
+                                            cursor: 'pointer', pointerEvents: 'auto', border: '2px solid #333'
+                                        }}
+                                    />
+                                ))}
+                            </div>
                         )}
                     </div>
 
@@ -142,11 +206,10 @@ export function CropModal({ item, onClose, onSave, onDelete, onRandom }) {
                 <div style={{ padding: '20px', background: '#111', color: '#eee', borderTop: '1px solid #333' }}>
                     <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
                         <div style={{ flex: 1, minWidth: '200px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                                <span style={{ color: '#aaa' }}>Zoom View</span>
-                                <span style={{ color: '#aaa' }}>{scale.toFixed(1)}x</span>
+                            {/* Zoom Slider Removed - Use Pinch! */}
+                            <div style={{ color: '#666', fontSize: '0.8rem', textAlign: 'center', marginTop: '10px' }}>
+                                Pinch to Zoom Image
                             </div>
-                            <input type="range" min="0.5" max="3" step="0.1" value={scale} onChange={e => setScale(Number(e.target.value))} style={{ width: '100%', accentColor: '#ffd700', height: '6px' }} />
                         </div>
                         <div style={{ flex: 2, minWidth: '300px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
