@@ -82,7 +82,7 @@ function App() {
                     const packingWidth = safeW / canvasScale; // Full width (trust box-sizing)
                     const packed = packItemsTight(loadedItems, packingWidth, baseSize)
                     setItems(packed)
-                    setToast('Updated! 🔄')
+                    setToast('🔄')
                     setTimeout(() => setToast(null), 2000)
                 }
             }
@@ -199,7 +199,7 @@ function App() {
         lastLocalInteractionRef.current = Date.now() // Update interaction time
         if (!collageId || loading) return // Prevent saving while loading or if not ready
         setSyncStatus('unsaved')
-        setToast('Saving... ☁️')
+        setToast('☁️')
 
         const targetItems = overrideItems || items
         const currentName = collageSets.find(s => s.id === collageId)?.name || 'Collage'
@@ -208,15 +208,15 @@ function App() {
 
         if (error) {
             setSyncStatus('error')
-            setToast('Save Failed ❌')
+            setToast('❌')
             console.error('Save error:', error)
         } else if (data && data.items && data.items.length !== targetItems.length) {
             setSyncStatus('error')
-            setToast('Sync Mismatch ⚠️')
+            setToast('⚠️')
             console.error('Server returned item count mismatch:', data.items.length, 'vs', targetItems.length)
         } else {
             setSyncStatus('saved')
-            setToast('Saved! ✅')
+            setToast('✅')
             setTimeout(() => setToast(null), 2000)
         }
     }, [collageId, loading, collageSets, items])
@@ -310,7 +310,7 @@ function App() {
                         const packed = packItemsTight(newItems, packWidth, baseSize)
                         setItems(packed)
                         await saveCollage(packed)
-                        setToast('Pasted! 📋')
+                        setToast('📋')
                         setTimeout(() => setToast(null), 2000)
                         pasted = true;
                     }
@@ -406,20 +406,24 @@ function App() {
 
             {toast && (
                 <div style={{
-                    position: 'fixed', bottom: '80px', left: '50%', transform: 'translateX(-50%)',
-                    background: 'rgba(0, 122, 255, 0.9)', color: 'white', padding: '10px 24px',
-                    borderRadius: '30px', zIndex: 2000, boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
-                    animation: 'fadeInOut 2s forwards', fontWeight: 'bold'
+                    position: 'fixed', bottom: '20px', right: '20px', left: 'auto', transform: 'none',
+                    background: 'rgba(0, 0, 0, 0.3)', color: 'white', padding: '10px',
+                    borderRadius: '50%', zIndex: 2000,
+                    fontSize: '24px', lineHeight: '1',
+                    width: '44px', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    backdropFilter: 'blur(4px)',
+                    animation: 'fadeInOut 2s forwards',
+                    pointerEvents: 'none'
                 }}>
                     {toast}
                 </div>
             )}
             <style>{`
                 @keyframes fadeInOut {
-                    0% { opacity: 0; transform: translate(-50%, 20px); }
-                    15% { opacity: 1; transform: translate(-50%, 0); }
-                    85% { opacity: 1; transform: translate(-50%, 0); }
-                    100% { opacity: 0; transform: translate(-50%, -20px); }
+                    0% { opacity: 0; transform: scale(0.8); }
+                    10% { opacity: 1; transform: scale(1); }
+                    90% { opacity: 1; transform: scale(1); }
+                    100% { opacity: 0; transform: scale(0.8); }
                 }
             `}</style>
         </div>
