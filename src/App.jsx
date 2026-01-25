@@ -108,6 +108,9 @@ function App() {
                 const currentIds = new Set(items.map(i => i.id))
                 const serverIds = new Set(serverItems.map(i => i.id))
 
+                // Debounce: If user interacted recently (last 10s), skip polling to prevent race conditions
+                if (Date.now() - lastLocalInteractionRef.current < 10000) return
+
                 const currentItemsStr = JSON.stringify(items)
                 const serverItemsStr = JSON.stringify(serverItems)
 
@@ -118,8 +121,12 @@ function App() {
                     // 3. Do NOT save back to server automatically (prevents loop)
 
                     const container = document.querySelector('.pull-to-refresh-container') || document.querySelector('.canvas-container');
-                    const containerW = container?.clientWidth || window.innerWidth;
-                    const safeW = Math.max(containerW, 320);
+                    // Robust Width: If container is missing or 0, use window.innerWidth.
+                    // Prioritize window.innerWidth if container seems collapsed (e.g. < 100px) which triggers mobile layout on PC
+                    let containerW = container?.clientWidth || 0;
+                    if (containerW < 100) containerW = window.innerWidth; // Safety fallback
+
+                    const safeW = Math.max(containerW, 320); // Keep min but ensure we use Real Width first
                     const packingWidth = safeW / canvasScale;
 
                     const packed = packItemsTight(serverItems, packingWidth, baseSize)
@@ -185,6 +192,7 @@ function App() {
     }
 
     const saveCollage = async (overrideItems) => {
+        lastLocalInteractionRef.current = Date.now() // Update interaction time
         if (!collageId || loading) return // Prevent saving while loading or if not ready
         setSyncStatus('unsaved')
         const targetItems = overrideItems || items
@@ -222,6 +230,7 @@ function App() {
     }
 
     const handlePack = useCallback((customWidth = null, itemsToPack = null, shouldSave = true) => {
+        if (shouldSave) lastLocalInteractionRef.current = Date.now()
         const container = document.querySelector('.pull-to-refresh-container') || document.querySelector('.canvas-container');
         const containerW = customWidth || container?.clientWidth || window.innerWidth;
         const safeW = Math.max(containerW, 320);
