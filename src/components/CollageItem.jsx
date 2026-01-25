@@ -4,6 +4,14 @@ export function CollageItem({ item, updateItem, deleteItem, onSelect }) {
     // Drag logic removed as per request.
     // We strictly use item.x / item.y provided by the Auto-Packer.
 
+    const isFloating = !item.is_in_last_row && item.container_width;
+    const widthStyle = isFloating
+        ? `${(item.width / item.container_width) * 100}%`
+        : `${item.width}px`;
+    const leftStyle = isFloating
+        ? `${(item.x / item.container_width) * 100}%`
+        : `${item.x}px`;
+
     return (
         <div
             onClick={(e) => {
@@ -12,14 +20,16 @@ export function CollageItem({ item, updateItem, deleteItem, onSelect }) {
             }}
             style={{
                 position: 'absolute',
-                top: item.y,
-                left: item.x,
-                width: item.width,
-                height: item.height || 'auto',
-                cursor: 'pointer', // Changed from grab
+                top: `${item.y}px`,
+                left: leftStyle,
+                width: widthStyle,
+                height: `${item.height}px`,
+                cursor: 'pointer',
                 zIndex: item.z_index,
                 userSelect: 'none',
-                transition: 'top 0.3s, left 0.3s, width 0.3s, height 0.3s', // Smooth re-layout
+                transition: 'top 0.3s, left 0.3s, width 0.3s, height 0.3s',
+                aspectRatio: item.aspect_ratio || 'auto',
+                backgroundColor: '#000',
             }}
         >
             {item.type === 'image' && (
@@ -29,11 +39,9 @@ export function CollageItem({ item, updateItem, deleteItem, onSelect }) {
                     style={{
                         width: '100%',
                         height: '100%',
-                        objectFit: 'cover',
+                        objectFit: 'contain', // CRITICAL: NEVER CLIP
                         pointerEvents: 'none',
-                        boxShadow: 'none',
                         display: 'block',
-                        imageRendering: 'auto'
                     }}
                 />
             )}

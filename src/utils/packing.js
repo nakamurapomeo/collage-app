@@ -16,6 +16,8 @@ export const packItemsTight = (itemList, containerWidth, targetRowHeight = 100) 
 
     // We will follow the same logic: Input list is already sorted/filtered if needed.
 
+    const packed = [];
+    let currentY = 0;
     let currentRow = [];
     let currentRowAspect = 0;
 
@@ -24,29 +26,24 @@ export const packItemsTight = (itemList, containerWidth, targetRowHeight = 100) 
         currentRow.push({ ...item, ratio });
         currentRowAspect += ratio;
 
-        // Calculate potential height if we were to fit this row to the container width
         const potentialHeight = containerWidth / currentRowAspect;
 
-        // If the height drops below targetRowHeight, this row is "full enough"
         if (potentialHeight <= targetRowHeight) {
             const rowHeight = potentialHeight;
             let x = 0;
 
             for (let i = 0; i < currentRow.length; i++) {
                 const rowItem = currentRow[i];
-                let itemWidth = rowHeight * rowItem.ratio;
-
-                // Snap last item to right edge to prevent 1px black gaps
-                if (i === currentRow.length - 1) {
-                    itemWidth = containerWidth - x;
-                }
+                const itemWidth = rowHeight * rowItem.ratio;
 
                 packed.push({
                     ...rowItem,
                     x: x,
                     y: currentY,
                     width: itemWidth,
-                    height: rowHeight
+                    height: rowHeight,
+                    container_width: containerWidth,
+                    is_last_in_row: i === currentRow.length - 1
                 });
                 x += itemWidth;
             }
@@ -57,7 +54,7 @@ export const packItemsTight = (itemList, containerWidth, targetRowHeight = 100) 
         }
     }
 
-    // Finalize the last row (Left aligned, using targetRowHeight)
+    // Finalize last row (Left align)
     if (currentRow.length > 0) {
         let x = 0;
         for (const rowItem of currentRow) {
@@ -67,7 +64,9 @@ export const packItemsTight = (itemList, containerWidth, targetRowHeight = 100) 
                 x: x,
                 y: currentY,
                 width: itemWidth,
-                height: targetRowHeight
+                height: targetRowHeight,
+                container_width: containerWidth,
+                is_in_last_row: true
             });
             x += itemWidth;
         }
