@@ -202,8 +202,8 @@ function App() {
         // Pack
         const container = document.querySelector('.pull-to-refresh-container') || document.querySelector('.canvas-container');
         const containerW = container?.clientWidth || window.innerWidth;
-        const width = (containerW - 24) / canvasScale;
-        const packed = packItemsTight(newItems, width, baseSize)
+        const packingWidth = (containerW - 24) / canvasScale;
+        const packed = packItemsTight(newItems, packingWidth, baseSize)
         setItems(packed)
 
         // Save
