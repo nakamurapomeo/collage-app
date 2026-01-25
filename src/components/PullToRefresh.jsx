@@ -7,8 +7,8 @@ export function PullToRefresh({ onRefresh, children }) {
     const containerRef = useRef(null);
 
     // Threshold to trigger refresh (px)
-    const THRESHOLD = 80;
-    const MAX_PULL = 120;
+    const THRESHOLD = 50; // More sensitive
+    const MAX_PULL = 100;
 
     const handleTouchStart = (e) => {
         // Only trigger if we are at the top of the scroll

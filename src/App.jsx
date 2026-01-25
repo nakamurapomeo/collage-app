@@ -184,7 +184,68 @@ function App() {
         saveCollage(packed)
     }, [items, baseSize, collageId, canvasScale])
 
-    const handleExportZip = async () => { /* ... */ }
+    const handlePasteImage = async () => {
+        try {
+            const clipboardItems = await navigator.clipboard.read();
+            let pasted = false;
+            for (const item of clipboardItems) {
+                if (item.types.some(type => type.startsWith('image/'))) {
+                    const blob = await item.getType(item.types.find(type => type.startsWith('image/')));
+                    // Mock file object (Canvas expects File)
+                    const file = new File([blob], "pasted-image.png", { type: blob.type });
+                    // Access Canvas handler via ref? No, better pass to a handler or expose Canvas method.
+                    // Actually, Header is sibling to Canvas. We need to pass data down or lift state up.
+                    // Easier: Pass file to Canvas via a prop that triggers default upload? 
+                    // Or better: Let App handle upload then add item. 
+                    // Let's reuse the hidden file input in Header/Canvas!
+                    // Wait, fileInputRef is in Header (or passed to it). But we can't programmatically set files on input.
+                    // Solution: We'll implement a direct upload handler in App and add item.
+                    const path = `${collageId}/${Date.now()}-pasted.png`
+                    setLoading(true)
+                    const { data: publicUrl, error } = await apiClient.storage.upload(file, path)
+
+                    if (publicUrl) {
+                        const img = new Image()
+                        img.src = publicUrl
+                        await new Promise(r => img.onload = r)
+                        const aspectRatio = img.naturalWidth / img.naturalHeight
+                        const width = Math.floor(baseSize * aspectRatio)
+                        const newItem = {
+                            id: crypto.randomUUID(),
+                            collage_id: collageId, type: 'image', content: publicUrl,
+                            x: 0, y: 0, width: width || 200, height: baseSize || 200,
+                            z_index: items.length + 1, style: {}
+                        }
+                        const newItems = [...items, newItem]
+                        // Pack and Save
+                        const packed = packItemsTight(newItems, window.innerWidth / canvasScale, baseSize)
+                        setItems(packed)
+                        await saveCollage(packed)
+                        pasted = true;
+                    }
+                    setLoading(false)
+                }
+            }
+            if (!pasted) alert("No image found in clipboard");
+        } catch (err) {
+            console.error(err);
+            alert("Failed to read clipboard: " + err);
+        }
+    };
+
+    const handleReorderSets = async (newSets) => {
+        setCollageSets(newSets);
+        // Persist order (update entire list)
+        // Note: API save logic for sets usually updates individual metadata.
+        // We might need a bulk update endpoint or just re-saving the list index is implicitly handled by some backends.
+        // Our KV implementation has `collage_list` key. We need an API to update THE LIST ORDER.
+        // Currently `apiClient.collages.list` gets it, but save updates single.
+        // Let's assume we need to update the list key. 
+        // We'll add a specific endpoint/method or just abuse saving one item to trigger list update? 
+        // No, we need to update the list explicitly. 
+        // Let's add `apiClient.collages.reorder(newSets)`
+        await apiClient.collages.reorder(newSets)
+    };
     const handleImportZip = async () => { /* ... */ }
 
     if (authChecking) return <div style={{ color: 'white', padding: 20 }}>Loading...</div>
@@ -217,6 +278,8 @@ function App() {
                 canvasScale={canvasScale} setCanvasScale={setCanvasScale}
                 fileInputRef={fileInputRef} onAddImage={() => fileInputRef.current?.click()} onAddText={() => setShowTextModal(true)}
                 onRefresh={fetchCollages}
+                onPaste={handlePasteImage}
+                onReorderSets={handleReorderSets}
             />
             <Canvas
                 items={items} setItems={setItems} collageId={collageId}

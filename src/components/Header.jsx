@@ -19,7 +19,12 @@ export function Header({
     setCanvasScale, // New
     onRefresh, // New
     status,
-    fileInputRef
+    setCanvasScale, // New
+    onRefresh, // New
+    status,
+    fileInputRef,
+    onPaste, // New
+    onReorderSets // New
 }) {
     const [showDropdown, setShowDropdown] = useState(false);
     const [newSetName, setNewSetName] = useState('');
@@ -42,6 +47,45 @@ export function Header({
     };
     const startRename = (set) => { setEditName(set.id); setEditNameValue(set.name); };
     const saveRename = (id) => { if (editNameValue.trim()) onRenameSet(id, editNameValue); setEditName(null); }
+
+    // Drag & Drop for Sets
+    const [draggingId, setDraggingId] = useState(null);
+    const [dropTarget, setDropTarget] = useState(null); // { id: string, position: 'top' | 'bottom' }
+
+    const handleDragStart = (e, id) => {
+        setDraggingId(id);
+    };
+
+    const handleDragOver = (e, id) => {
+        e.preventDefault();
+        if (draggingId === id) { setDropTarget(null); return; }
+
+        const rect = e.target.getBoundingClientRect();
+        const midY = rect.top + rect.height / 2;
+        const position = e.clientY < midY ? 'top' : 'bottom';
+        setDropTarget({ id, position });
+    };
+
+    const handleDrop = (e, targetId) => {
+        e.preventDefault();
+        if (!draggingId || !dropTarget || draggingId === targetId) {
+            setDraggingId(null); setDropTarget(null); return;
+        }
+
+        const newSets = [...sets];
+        const dragIndex = newSets.findIndex(s => s.id === draggingId);
+        const [draggedItem] = newSets.splice(dragIndex, 1);
+
+        const targetIndex = newSets.findIndex(s => s.id === targetId);
+        // If bottom, insert after. If top, insert at index.
+        const insertIndex = dropTarget.position === 'bottom' ? targetIndex + 1 : targetIndex;
+
+        newSets.splice(insertIndex, 0, draggedItem);
+        onReorderSets(newSets);
+
+        setDraggingId(null);
+        setDropTarget(null);
+    };
 
     // Mobile layout adjustments
     const titleStyle = isMobile ? { fontSize: '1rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '120px' } : { fontSize: '1.2rem' };
@@ -69,7 +113,20 @@ export function Header({
                             <div style={{ position: 'absolute', top: '100%', left: 0, minWidth: '250px', background: '#222', border: '1px solid #444', borderRadius: '8px', zIndex: 1001, padding: '5px' }}>
                                 <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
                                     {sets.map(set => (
-                                        <div key={set.id} style={{ padding: '8px 12px', display: 'flex', justifyContent: 'space-between', color: set.id === currentSetId ? '#ffd700' : '#ddd' }}>
+                                        <div
+                                            key={set.id}
+                                            draggable="true"
+                                            onDragStart={(e) => handleDragStart(e, set.id)}
+                                            onDragOver={(e) => handleDragOver(e, set.id)}
+                                            onDrop={(e) => handleDrop(e, set.id)}
+                                            style={{
+                                                padding: '8px 12px', display: 'flex', justifyContent: 'space-between',
+                                                color: set.id === currentSetId ? '#ffd700' : '#ddd',
+                                                borderTop: dropTarget?.id === set.id && dropTarget.position === 'top' ? '2px solid #007bff' : '2px solid transparent',
+                                                borderBottom: dropTarget?.id === set.id && dropTarget.position === 'bottom' ? '2px solid #007bff' : '2px solid transparent',
+                                                opacity: draggingId === set.id ? 0.5 : 1
+                                            }}
+                                        >
                                             {editName === set.id ? (
                                                 <input value={editNameValue} onChange={e => setEditNameValue(e.target.value)} onBlur={() => saveRename(set.id)} autoFocus style={{ background: '#333', color: 'white', border: 'none' }} />
                                             ) : (
@@ -78,6 +135,7 @@ export function Header({
                                             <div style={{ display: 'flex', gap: 5 }}>
                                                 <button onClick={(e) => { e.stopPropagation(); startRename(set) }} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>✏️</button>
                                                 <button onClick={(e) => { e.stopPropagation(); if (confirm('Delete?')) onDeleteSet(set.id) }} style={{ background: 'transparent', color: '#f44', border: 'none', cursor: 'pointer' }}>🗑️</button>
+                                                <span style={{ cursor: 'move', marginLeft: 5 }}>≡</span>
                                             </div>
                                         </div>
                                     ))}
@@ -119,6 +177,7 @@ export function Header({
                 {/* Main Actions */}
                 {!isMobile && (
                     <>
+                        <button onClick={onPaste} title="Paste from Clipboard" style={buttonStyle}>📋</button>
                         <button onClick={onShuffle} title="Shuffle" style={buttonStyle}>🎲</button>
                         <button onClick={onAddText} title="Add Text" style={buttonStyle}>Aa</button>
                     </>
@@ -148,6 +207,7 @@ export function Header({
                                             </div>
                                         </div>
                                         <button onClick={() => { onShuffle(); setShowMenu(false); }} style={{ textAlign: 'left', background: 'transparent', padding: '10px', color: 'white', border: 'none' }}>🎲 Shuffle</button>
+                                        <button onClick={() => { onPaste(); setShowMenu(false); }} style={{ textAlign: 'left', background: 'transparent', padding: '10px', color: 'white', border: 'none' }}>📋 Paste</button>
                                         <button onClick={() => { onAddText(); setShowMenu(false); }} style={{ textAlign: 'left', background: 'transparent', padding: '10px', color: 'white', border: 'none' }}>Aa Add Text</button>
                                     </>
                                 )}

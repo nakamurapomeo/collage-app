@@ -43,6 +43,18 @@ export const apiClient = {
                 return { data: null, error: 'Connection error' };
             }
         },
+        reorder: async (sets) => {
+            // We'll use a special endpoint or just PUT to /api/collages/reorder
+            // Since we have [[path]].js, we can do /api/collages/reorder
+            try {
+                const res = await fetch(`${BASE_URL}/collages/reorder`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(sets)
+                });
+                return handleResponse(res);
+            } catch (e) { return { error: e.message } }
+        },
         get: async (id) => {
             try {
                 const res = await fetch(`${BASE_URL}/collages/${id}?t=${Date.now()}`);

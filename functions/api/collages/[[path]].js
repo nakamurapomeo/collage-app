@@ -10,6 +10,21 @@ export async function onRequest(context) {
     // But `functions/api/collages/[[path]].js` maps everything under /api/collages here.
     const path = context.params.path; // path is Array of segments relative to this file
     // If /api/collages -> path is undefined or empty
+
+    // Check for "reorder" special path
+    if (path && path[0] === 'reorder' && request.method === 'POST') {
+        const newSets = await request.json();
+        // Validate
+        if (Array.isArray(newSets)) {
+            // We only save metadata fields to list
+            const cleanList = newSets.map(s => ({
+                id: s.id, name: s.name, created_at: s.created_at, updated_at: s.updated_at
+            }));
+            await env.COLLAGE_KV.put('collage_list', JSON.stringify(cleanList));
+            return new Response(JSON.stringify({ success: true }), { headers: { 'Content-Type': 'application/json' } });
+        }
+        return new Response('Invalid Data', { status: 400 });
+    }
     // If /api/collages/123 -> path is ['123']
 
     if (request.method === 'GET') {
