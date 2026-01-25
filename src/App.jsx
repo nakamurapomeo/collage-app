@@ -203,11 +203,16 @@ function App() {
         const targetItems = overrideItems || items
         const currentName = collageSets.find(s => s.id === collageId)?.name || 'Collage'
 
-        const { error } = await apiClient.collages.save(collageId, currentName, targetItems)
+        const { data, error } = await apiClient.collages.save(collageId, currentName, targetItems)
+
         if (error) {
             setSyncStatus('error')
             setToast('Save Failed ❌')
             console.error('Save error:', error)
+        } else if (data && data.items && data.items.length !== targetItems.length) {
+            setSyncStatus('error')
+            setToast('Sync Mismatch ⚠️')
+            console.error('Server returned item count mismatch:', data.items.length, 'vs', targetItems.length)
         } else {
             setSyncStatus('saved')
             setToast('Saved! ✅')
