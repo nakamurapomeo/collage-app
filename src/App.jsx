@@ -30,6 +30,7 @@ function App() {
     const [showTextModal, setShowTextModal] = useState(false)
     const [toast, setToast] = useState(null)
     const fileInputRef = useRef(null)
+    const lastLocalInteractionRef = useRef(0)
 
     // Auth Check
     useEffect(() => {
