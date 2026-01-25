@@ -27,7 +27,7 @@ export function CollageItem({ item, updateItem, deleteItem, onSelect }) {
                     style={{
                         width: '100%',
                         height: '100%',
-                        objectFit: 'contain', // 仕様書：切り抜きなしで全体を表示
+                        objectFit: 'cover', // 仕様書：切り抜きなしで全体を表示 -> 隙間優先でcoverに変更
                         pointerEvents: 'none',
                         display: 'block',
                     }}

@@ -255,7 +255,7 @@ function App() {
                         img.src = publicUrl
                         await new Promise(r => img.onload = r)
                         const aspectRatio = img.naturalWidth / img.naturalHeight
-                        const width = Math.floor(baseSize * aspectRatio)
+                        const width = baseSize * aspectRatio
                         const newItem = {
                             id: crypto.randomUUID(),
                             collage_id: collageId, type: 'image', content: publicUrl,

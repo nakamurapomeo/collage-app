@@ -53,7 +53,7 @@ export function Canvas({
                     img.src = publicUrl
                     await new Promise(r => img.onload = r)
                     const aspectRatio = img.naturalWidth / img.naturalHeight
-                    const width = Math.floor(baseSize * aspectRatio)
+                    const width = baseSize * aspectRatio
                     newItems.push({
                         id: crypto.randomUUID(), // Local ID generation
                         collage_id: collageId, type: 'image', content: publicUrl,
@@ -86,7 +86,7 @@ export function Canvas({
                 img.src = publicUrl
                 await new Promise(r => img.onload = r)
                 const aspectRatio = img.naturalWidth / img.naturalHeight
-                const width = Math.floor(baseSize * aspectRatio)
+                const width = baseSize * aspectRatio
                 const height = baseSize
 
                 const actualChanges = {
