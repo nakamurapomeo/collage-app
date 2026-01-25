@@ -198,15 +198,20 @@ function App() {
         lastLocalInteractionRef.current = Date.now() // Update interaction time
         if (!collageId || loading) return // Prevent saving while loading or if not ready
         setSyncStatus('unsaved')
+        setToast('Saving... ☁️')
+
         const targetItems = overrideItems || items
         const currentName = collageSets.find(s => s.id === collageId)?.name || 'Collage'
 
         const { error } = await apiClient.collages.save(collageId, currentName, targetItems)
         if (error) {
             setSyncStatus('error')
+            setToast('Save Failed ❌')
             console.error('Save error:', error)
         } else {
             setSyncStatus('saved')
+            setToast('Saved! ✅')
+            setTimeout(() => setToast(null), 2000)
         }
     }
 

@@ -57,7 +57,9 @@ export const apiClient = {
         },
         get: async (id) => {
             try {
-                const res = await fetch(`${BASE_URL}/collages/${id}?t=${Date.now()}`);
+                const res = await fetch(`${BASE_URL}/collages/${id}?t=${Date.now()}`, {
+                    headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+                });
                 return handleResponse(res);
             } catch (e) {
                 return { data: null, error: 'Connection error' };
