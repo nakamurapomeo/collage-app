@@ -1,12 +1,14 @@
 import { useRef, useState, useEffect } from 'react'
 import { apiClient } from '../apiClient' // Updated import
 import { CollageItem } from './CollageItem'
+import { CollageItem } from './CollageItem'
 import { CropModal } from './CropModal'
+import { PullToRefresh } from './PullToRefresh'
 
 export function Canvas({
     items, setItems, collageId, fileInputRef, baseSize,
     onPack, onShuffle, canvasScale, setCanvasScale,
-    onSave // New prop to handle saving
+    onSave, onRefresh // Added onRefresh
 }) {
     const [uploading, setUploading] = useState(false)
     const [selectedItem, setSelectedItem] = useState(null)
@@ -103,7 +105,9 @@ export function Canvas({
         <div
             style={{
                 marginTop: '60px', width: '100%', height: 'calc(100vh - 60px)',
-                position: 'relative', overflow: 'hidden', background: '#121212', touchAction: 'none'
+                position: 'relative', background: '#121212',
+                // Enable scroll by removing overflow: hidden (except x)
+                overflowX: 'hidden', overflowY: 'hidden' // PullToRefresh handles Y scroll
             }}
             ref={containerRef}
             onDragOver={e => e.preventDefault()}
@@ -113,28 +117,35 @@ export function Canvas({
             }}
             onClick={() => setSelectedItem(null)}
         >
-            <input type="file" multiple accept="image/*" style={{ display: 'none' }} ref={fileInputRef} onChange={(e) => handleFiles(Array.from(e.target.files))} />
+            <PullToRefresh onRefresh={onRefresh}>
+                <div style={{ minHeight: 'calc(100vh - 60px + 1px)', position: 'relative' }}>
+                    {/* MinHeight ensures scrollable even when empty-ish */}
 
-            <div style={{
-                transformOrigin: 'top left', transform: `scale(${canvasScale})`,
-                width: '100%', height: '100%', position: 'absolute', top: 0, left: 0,
-                transition: 'transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
-            }}>
-                {items.map(item => (
-                    <CollageItem key={item.id} item={item} updateItem={updateItem} deleteItem={deleteItem} onSelect={setSelectedItem} />
-                ))}
-            </div>
+                    <input type="file" multiple accept="image/*" style={{ display: 'none' }} ref={fileInputRef} onChange={(e) => handleFiles(Array.from(e.target.files))} />
+
+                    <div style={{
+                        transformOrigin: 'top left', transform: `scale(${canvasScale})`,
+                        width: '100%', height: '100%', position: 'absolute', top: 0, left: 0,
+                        transition: 'transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
+                    }}>
+                        {items.map(item => (
+                            <CollageItem key={item.id} item={item} updateItem={updateItem} deleteItem={deleteItem} onSelect={setSelectedItem} />
+                        ))}
+                    </div>
+
+                    {items.length === 0 && !uploading && (
+                        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: '#555', pointerEvents: 'none', textAlign: 'center' }}>
+                            Drag & Drop images or click 📷<br />New images will appear at the bottom
+                        </div>
+                    )}
+                </div>
+            </PullToRefresh>
 
             {selectedItem && (
                 <CropModal item={selectedItem} onClose={() => setSelectedItem(null)} onSave={updateItem} onDelete={deleteItem} onRandom={handleRandom} />
             )}
 
-            {items.length === 0 && !uploading && (
-                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: '#555', pointerEvents: 'none', textAlign: 'center' }}>
-                    Drag & Drop images or click 📷<br />New images will appear at the bottom
-                </div>
-            )}
-            {uploading && <div style={{ position: 'fixed', bottom: 20, right: 20, background: '#333', padding: 10, borderRadius: 8, color: 'white' }}>Uploading...</div>}
+            {uploading && <div style={{ position: 'fixed', bottom: 20, right: 20, background: '#333', padding: 10, borderRadius: 8, color: 'white', zIndex: 100 }}>Uploading...</div>}
         </div>
     )
 }

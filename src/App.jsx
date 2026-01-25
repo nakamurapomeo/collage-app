@@ -225,6 +225,7 @@ function App() {
                 onPack={handlePack} onShuffle={handleShuffle}
                 // Pass saveCollage to Canvas for image updates
                 onSave={saveCollage}
+                onRefresh={fetchCollages} // Added for Pull-to-Refresh
             />
             {showTextModal && <TextModal onClose={() => setShowTextModal(false)} onAdd={handleAddText} />}
         </div>
