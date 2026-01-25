@@ -12,10 +12,14 @@ export function Canvas({
     const [selectedItem, setSelectedItem] = useState(null)
     const containerRef = useRef(null)
 
+    const onPackRef = useRef(onPack)
+    // Update ref when onPack changes (which happens when items change)
+    useEffect(() => { onPackRef.current = onPack }, [onPack])
+
     useEffect(() => {
-        const timer = setTimeout(() => { onPack() }, 300)
+        const timer = setTimeout(() => { onPackRef.current() }, 300)
         return () => clearTimeout(timer)
-    }, [canvasScale])
+    }, [canvasScale]) // Only run on scale change (or mount)
 
     const uploadImage = async (file) => {
         // Generate simple path

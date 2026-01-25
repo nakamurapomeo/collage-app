@@ -136,7 +136,7 @@ function App() {
     }
 
     const saveCollage = async (overrideItems) => {
-        if (!collageId) return
+        if (!collageId || loading) return // Prevent saving while loading or if not ready
         setSyncStatus('unsaved')
         const targetItems = overrideItems || items
         const currentName = collageSets.find(s => s.id === collageId)?.name || 'Collage'
