@@ -108,8 +108,8 @@ function App() {
                 const currentIds = new Set(items.map(i => i.id))
                 const serverIds = new Set(serverItems.map(i => i.id))
 
-                // Debounce: If user interacted recently (last 10s), skip polling to prevent race conditions
-                if (Date.now() - lastLocalInteractionRef.current < 10000) return
+                // Debounce: If user interacted recently (last 20s), skip polling to prevent race conditions
+                if (Date.now() - lastLocalInteractionRef.current < 20000) return
 
                 const currentItemsStr = JSON.stringify(items)
                 const serverItemsStr = JSON.stringify(serverItems)
@@ -133,7 +133,7 @@ function App() {
                     setItems(packed)
                 }
             }
-        }, 5000) // Poll every 5 seconds
+        }, 20000) // Poll every 20 seconds
 
         return () => clearInterval(interval)
     }, [isLoggedIn, collageId, loading, syncStatus, items, canvasScale, baseSize, showTextModal])
