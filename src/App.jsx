@@ -74,8 +74,11 @@ function App() {
                 const loadedItems = collageData.items || []
                 setItems(loadedItems)
                 // Re-pack if needed, but usually just display is fine
+                // Re-pack if needed, but usually just display is fine
                 if (loadedItems.length > 0) {
-                    const packed = packItemsTight(loadedItems, window.innerWidth / canvasScale, baseSize)
+                    const container = document.querySelector('.pull-to-refresh-container') || document.querySelector('.canvas-container');
+                    const width = (container?.clientWidth || window.innerWidth) / canvasScale;
+                    const packed = packItemsTight(loadedItems, width, baseSize)
                     setItems(packed)
                 }
             }
@@ -196,7 +199,9 @@ function App() {
         const newItems = [...items, newItem]
 
         // Pack
-        const packed = packItemsTight(newItems, window.innerWidth / canvasScale, baseSize)
+        const container = document.querySelector('.pull-to-refresh-container') || document.querySelector('.canvas-container');
+        const width = (container?.clientWidth || window.innerWidth) / canvasScale;
+        const packed = packItemsTight(newItems, width, baseSize)
         setItems(packed)
 
         // Save
@@ -260,7 +265,9 @@ function App() {
                         }
                         const newItems = [...items, newItem]
                         // Pack and Save
-                        const packed = packItemsTight(newItems, window.innerWidth / canvasScale, baseSize)
+                        const container = document.querySelector('.pull-to-refresh-container') || document.querySelector('.canvas-container');
+                        const packWidth = (container?.clientWidth || window.innerWidth) / canvasScale;
+                        const packed = packItemsTight(newItems, packWidth, baseSize)
                         setItems(packed)
                         await saveCollage(packed)
                         setToast('Pasted! 📋')

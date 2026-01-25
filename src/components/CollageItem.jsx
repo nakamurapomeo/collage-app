@@ -17,7 +17,7 @@ export function CollageItem({ item, updateItem, deleteItem, onSelect }) {
                 zIndex: item.z_index,
                 userSelect: 'none',
                 transition: 'top 0.3s, left 0.3s, width 0.3s, height 0.3s',
-                backgroundColor: '#000',
+                // backgroundColor: '#000',
             }}
         >
             {item.type === 'image' && (

@@ -22,9 +22,9 @@ export const packItemsTight = (itemList, containerWidth, targetRowHeight = 200) 
                 let itemWidth = rowHeight * rowItem.ratio;
 
                 // 行の最後の一枚を右端に吸着させる（隙間ゼロの肝）
-                if (i === currentRow.length - 1) {
-                    itemWidth = containerWidth - x;
-                }
+                // if (i === currentRow.length - 1) {
+                //    itemWidth = containerWidth - x;
+                // }
 
                 packed.push({
                     ...rowItem,

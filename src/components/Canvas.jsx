@@ -18,8 +18,16 @@ export function Canvas({
     useEffect(() => { onPackRef.current = onPack }, [onPack])
 
     useEffect(() => {
+        const handleResize = () => {
+            onPackRef.current()
+        }
+        window.addEventListener('resize', handleResize)
+
         const timer = setTimeout(() => { onPackRef.current() }, 300)
-        return () => clearTimeout(timer)
+        return () => {
+            clearTimeout(timer)
+            window.removeEventListener('resize', handleResize)
+        }
     }, [canvasScale]) // Only run on scale change (or mount)
 
     const uploadImage = async (file) => {

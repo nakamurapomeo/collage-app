@@ -1,4 +1,6 @@
 :root {
+    box-sizing: border-box;
+
     --bg-primary: #121212;
     --bg-secondary: #1e1e1e;
     --text-primary: #ffffff;
@@ -7,6 +9,12 @@
     /* Gold */
     --accent-glow: rgba(255, 215, 0, 0.3);
     --border: #333333;
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: inherit;
 }
 
 body {
