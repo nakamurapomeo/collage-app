@@ -34,25 +34,30 @@ function App() {
     }, [])
 
     // Initialize Data (Only if logged in)
+    // Initialize Data (Only if logged in)
+    const fetchCollages = useCallback(async () => {
+        if (!isLoggedIn) return
+        setLoading(true)
+        setGlobalError(null)
+        const { data, error } = await apiClient.collages.list()
+
+        if (error) {
+            console.error("Failed to fetch collages:", error)
+            setGlobalError(error)
+            setLoading(false)
+            return
+        }
+
+        if (data) {
+            setCollageSets(data)
+            if (!collageId && data.length > 0) setCollageId(data[0].id)
+            else if (!collageId && data.length === 0) createCollage('My First Collage')
+        }
+        setLoading(false)
+    }, [isLoggedIn, collageId])
+
     useEffect(() => {
         if (!isLoggedIn) return
-
-        async function fetchCollages() {
-            setGlobalError(null)
-            const { data, error } = await apiClient.collages.list()
-
-            if (error) {
-                console.error("Failed to fetch collages:", error)
-                setGlobalError(error)
-                return
-            }
-
-            if (data) {
-                setCollageSets(data)
-                if (!collageId && data.length > 0) setCollageId(data[0].id)
-                else if (!collageId && data.length === 0) createCollage('My First Collage')
-            }
-        }
         fetchCollages()
     }, [isLoggedIn])
 
@@ -209,6 +214,7 @@ function App() {
                 onShuffle={handleShuffle}
                 canvasScale={canvasScale} setCanvasScale={setCanvasScale}
                 fileInputRef={fileInputRef} onAddImage={() => fileInputRef.current?.click()} onAddText={() => setShowTextModal(true)}
+                onRefresh={fetchCollages}
             />
             <Canvas
                 items={items} setItems={setItems} collageId={collageId}
