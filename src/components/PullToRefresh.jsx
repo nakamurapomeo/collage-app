@@ -86,9 +86,10 @@ export function PullToRefresh({ onRefresh, children }) {
             }}>
                 <div style={{
                     transform: `rotate(${pullDistance * 2}deg)`,
-                    opacity: Math.min(pullDistance / THRESHOLD, 1)
+                    opacity: Math.min(pullDistance / THRESHOLD, 1),
+                    fontSize: '2rem'
                 }}>
-                    {refreshing ? '🔄' : '⬇️'}
+                    {refreshing ? '🎲' : '🎲'}
                 </div>
             </div>
 

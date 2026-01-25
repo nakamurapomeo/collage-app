@@ -1,7 +1,6 @@
 import { useRef, useState, useEffect } from 'react'
 import { apiClient } from '../apiClient' // Updated import
 import { CollageItem } from './CollageItem'
-import { CollageItem } from './CollageItem'
 import { CropModal } from './CropModal'
 import { PullToRefresh } from './PullToRefresh'
 
@@ -117,7 +116,7 @@ export function Canvas({
             }}
             onClick={() => setSelectedItem(null)}
         >
-            <PullToRefresh onRefresh={onRefresh}>
+            <PullToRefresh onRefresh={onShuffle}>
                 <div style={{ minHeight: 'calc(100vh - 60px + 1px)', position: 'relative' }}>
                     {/* MinHeight ensures scrollable even when empty-ish */}
 
