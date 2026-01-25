@@ -117,7 +117,11 @@ export function Canvas({
             onClick={() => setSelectedItem(null)}
         >
             <PullToRefresh onRefresh={onShuffle}>
-                <div style={{ minHeight: 'calc(100vh - 60px + 1px)', position: 'relative' }}>
+                <div style={{
+                    minHeight: 'calc(100vh - 60px + 1px)',
+                    position: 'relative',
+                    paddingBottom: '40vh' // Extra space for better scroll feel
+                }}>
                     {/* MinHeight ensures scrollable even when empty-ish */}
 
                     <input type="file" multiple accept="image/*" style={{ display: 'none' }} ref={fileInputRef} onChange={(e) => handleFiles(Array.from(e.target.files))} />

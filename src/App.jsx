@@ -21,6 +21,7 @@ function App() {
     const [canvasScale, setCanvasScale] = useState(1)
 
     const [showTextModal, setShowTextModal] = useState(false)
+    const [toast, setToast] = useState(null)
     const fileInputRef = useRef(null)
 
     // Auth Check
@@ -248,6 +249,8 @@ function App() {
                         const packed = packItemsTight(newItems, window.innerWidth / canvasScale, baseSize)
                         setItems(packed)
                         await saveCollage(packed)
+                        setToast('Pasted! 📋')
+                        setTimeout(() => setToast(null), 2000)
                         pasted = true;
                     }
                     setLoading(false)
@@ -339,6 +342,25 @@ function App() {
                 onRefresh={fetchCollages} // Added for Pull-to-Refresh
             />
             {showTextModal && <TextModal onClose={() => setShowTextModal(false)} onAdd={handleAddText} />}
+
+            {toast && (
+                <div style={{
+                    position: 'fixed', bottom: '80px', left: '50%', transform: 'translateX(-50%)',
+                    background: 'rgba(0, 122, 255, 0.9)', color: 'white', padding: '10px 24px',
+                    borderRadius: '30px', zIndex: 2000, boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+                    animation: 'fadeInOut 2s forwards', fontWeight: 'bold'
+                }}>
+                    {toast}
+                </div>
+            )}
+            <style>{`
+                @keyframes fadeInOut {
+                    0% { opacity: 0; transform: translate(-50%, 20px); }
+                    15% { opacity: 1; transform: translate(-50%, 0); }
+                    85% { opacity: 1; transform: translate(-50%, 0); }
+                    100% { opacity: 0; transform: translate(-50%, -20px); }
+                }
+            `}</style>
         </div>
     )
 }
