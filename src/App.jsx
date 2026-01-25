@@ -108,46 +108,13 @@ function App() {
                 const currentIds = new Set(items.map(i => i.id))
                 const serverIds = new Set(serverItems.map(i => i.id))
 
-                // If strictly equal sets and we assume no content updates needed (just order), skip.
-                const areIdsSame = currentIds.size === serverIds.size && [...currentIds].every(id => serverIds.has(id))
+                const currentItemsStr = JSON.stringify(items)
+                const serverItemsStr = JSON.stringify(serverItems)
 
-                // Deep difference check for content (URL, style, etc.) even if IDs match
-                let contentChanged = !areIdsSame;
-                if (!contentChanged) {
-                    contentChanged = items.some(localItem => {
-                        const serverItem = serverItems.find(s => s.id === localItem.id)
-                        if (!serverItem) return true;
-                        return localItem.content !== serverItem.content ||
-                            JSON.stringify(localItem.style) !== JSON.stringify(serverItem.style) ||
-                            localItem.aspect_ratio !== serverItem.aspect_ratio;
-                    })
-                }
-
-                if (contentChanged) {
-                    // Smart Merge:
-                    const mergedItems = []
-                    const newItems = []
-                    const localMap = new Map(items.map(i => [i.id, i]))
-
-                    serverItems.forEach(sItem => {
-                        if (localMap.has(sItem.id)) {
-                            // Exists locally: Merge content/style updates into local geometry
-                            const localItem = localMap.get(sItem.id)
-                            mergedItems.push({
-                                ...localItem,
-                                content: sItem.content,
-                                content_link: sItem.content_link,
-                                style: sItem.style,
-                                aspect_ratio: sItem.aspect_ratio
-                            });
-                        } else {
-                            // New item from server
-                            newItems.push(sItem);
-                        }
-                    })
-
-                    const finalItems = [...mergedItems, ...newItems]
-                    setItems(finalItems)
+                if (currentItemsStr !== serverItemsStr) {
+                    // Difference found (content, position, new items, deletions)
+                    // Fully adopt server state to ensure synchronization
+                    setItems(serverItems)
                 }
             }
         }, 5000) // Poll every 5 seconds
