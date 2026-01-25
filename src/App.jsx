@@ -17,7 +17,7 @@ function App() {
     const [items, setItems] = useState([])
     const [loading, setLoading] = useState(true)
     const [syncStatus, setSyncStatus] = useState('saved')
-    const [baseSize, setBaseSize] = useState(100)
+    const [baseSize, setBaseSize] = useState(200) // Increased for better resolution
     const [canvasScale, setCanvasScale] = useState(() => {
         const saved = localStorage.getItem('collage_zoom')
         return saved ? parseFloat(saved) : 1

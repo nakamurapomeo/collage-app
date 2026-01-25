@@ -32,7 +32,8 @@ export function CollageItem({ item, updateItem, deleteItem, onSelect }) {
                         objectFit: 'cover',
                         pointerEvents: 'none',
                         boxShadow: '0 4px 6px rgba(0,0,0,0.3)',
-                        display: 'block'
+                        display: 'block',
+                        imageRendering: 'auto'
                     }}
                 />
             )}
