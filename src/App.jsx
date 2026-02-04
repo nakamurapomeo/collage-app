@@ -35,6 +35,40 @@ function App() {
     const [toast, setToast] = useState(null)
     const fileInputRef = useRef(null)
     const lastLocalInteractionRef = useRef(0)
+    // Touch Handling for Swipe Sidebar
+    const touchStartRef = useRef(null)
+    const touchMoveRef = useRef(null)
+
+    const handleTouchStart = (e) => {
+        touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+    }
+    const handleTouchMove = (e) => {
+        touchMoveRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+    }
+    const handleTouchEnd = () => {
+        if (!touchStartRef.current || !touchMoveRef.current) return
+
+        const deltaX = touchMoveRef.current.x - touchStartRef.current.x
+        const deltaY = touchMoveRef.current.y - touchStartRef.current.y
+
+        // Thresholds
+        const minSwipe = 60
+        const maxVertical = 50
+
+        // If swipe is primarily horizontal
+        if (Math.abs(deltaX) > minSwipe && Math.abs(deltaY) < maxVertical) {
+            if (deltaX > 0) {
+                // Left -> Right: Open
+                setShowSidebar(true)
+            } else {
+                // Right -> Left: Close
+                setShowSidebar(false)
+            }
+        }
+
+        touchStartRef.current = null
+        touchMoveRef.current = null
+    }
 
     // Auth Check
     useEffect(() => {
@@ -472,44 +506,7 @@ function App() {
     const currentSet = collageSets.find(s => s.id === collageId)
     if (!collageId) return <div style={{ color: 'white', padding: 20 }}>Loading Collage...</div>
 
-    // Touch Handling for Swipe Sidebar
-    const touchStartRef = useRef(null)
-    const touchMoveRef = useRef(null)
 
-    const handleTouchStart = (e) => {
-        touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
-    }
-    const handleTouchMove = (e) => {
-        touchMoveRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
-    }
-    const handleTouchEnd = () => {
-        if (!touchStartRef.current || !touchMoveRef.current) return
-
-        const deltaX = touchMoveRef.current.x - touchStartRef.current.x
-        const deltaY = touchMoveRef.current.y - touchStartRef.current.y
-
-        // Thresholds
-        const minSwipe = 60
-        const maxVertical = 50
-
-        // If swipe is primarily horizontal
-        if (Math.abs(deltaX) > minSwipe && Math.abs(deltaY) < maxVertical) {
-            if (deltaX > 0) {
-                // Left -> Right: Open
-                // Only if starting from left edge? Or anywhere? 
-                // User said "Left to right to show".
-                // To avoid accidental triggers, let's say anywhere is fine BUT usually edge is better.
-                // Let's allow anywhere for now as requested "easy switching".
-                setShowSidebar(true)
-            } else {
-                // Right -> Left: Close
-                setShowSidebar(false)
-            }
-        }
-
-        touchStartRef.current = null
-        touchMoveRef.current = null
-    }
 
     return (
         <div
