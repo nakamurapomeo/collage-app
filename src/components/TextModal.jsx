@@ -23,16 +23,22 @@ export function TextModal({ onClose, onAdd }) {
                 width: '300px', display: 'flex', flexDirection: 'column', gap: '15px',
                 boxShadow: '0 10px 40px rgba(0,0,0,0.5)'
             }}>
-                <input
+                <textarea
                     autoFocus
-                    type="text"
                     value={text}
                     onChange={e => setText(e.target.value)}
                     placeholder="Enter text..."
-                    onKeyDown={e => e.key === 'Enter' && handleAdd()}
+                    onKeyDown={e => {
+                        // Allow Shift+Enter for new line, but Enter to submit if not shifting
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleAdd();
+                        }
+                    }}
                     style={{
                         fontSize: '18px', padding: '10px', borderRadius: '6px',
-                        border: 'none', background: '#333', color: 'white', width: '100%', boxSizing: 'border-box'
+                        border: 'none', background: '#333', color: 'white', width: '100%', boxSizing: 'border-box',
+                        minHeight: '100px', resize: 'vertical', fontFamily: 'sans-serif'
                     }}
                 />
 

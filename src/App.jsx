@@ -223,27 +223,60 @@ function App() {
     }, [collageId, loading, collageSets, items])
 
     const handleAddText = async ({ text, color, size }) => {
-        const { width, height, ascent, left } = measureText(text, size)
+        setLoading(true)
+        try {
+            // 1. Generate Image Blob from Text
+            const blob = await textToImageBlob(text, color, size)
+            const file = new File([blob], "text-image.png", { type: "image/png" })
 
-        const newItem = {
-            id: 'text-' + Date.now(),
-            collage_id: collageId, type: 'text', content: text,
-            x: 0, y: 0, width: width, height: height,
-            style: { color, fontSize: size, ascent, paddingLeft: left + 1 }, // Store offset info
-            z_index: items.length + 10
+            // 2. Upload (Reuse existing upload logic basically)
+            const path = `${collageId}/${Date.now()}-text.png`
+            const { data: publicUrl, error } = await apiClient.storage.upload(file, path)
+
+            if (error) {
+                alert('Failed to upload text image: ' + error)
+                setLoading(false)
+                return
+            }
+
+            // 3. Add as Image Item
+            // Get dimensions from the blob/bitmap?
+            // We can load the image to get natural dimensions to ensure aspect ratio is correct.
+            const img = new Image()
+            img.src = publicUrl
+            await new Promise(r => img.onload = r)
+
+            const aspectRatio = img.naturalWidth / img.naturalHeight
+            // User requested "large" size - let's default to baseSize or slightly larger relative to content?
+            // Actually, baseSize ensures it's visible.
+            const width = baseSize * aspectRatio
+
+            const newItem = {
+                id: crypto.randomUUID(),
+                collage_id: collageId, type: 'image', content: publicUrl,
+                x: 0, y: 0, width: width, height: baseSize,
+                aspect_ratio: aspectRatio,
+                z_index: items.length + 1, style: {}
+            }
+
+            const newItems = [...items, newItem]
+
+            // Pack
+            const container = document.querySelector('.pull-to-refresh-container') || document.querySelector('.canvas-container');
+            const containerW = container?.clientWidth || window.innerWidth;
+            const safeW = Math.max(containerW, 320);
+            const packingWidth = safeW / canvasScale;
+            const packed = packItemsTight(newItems, packingWidth, baseSize)
+            setItems(packed)
+
+            // Save
+            await saveCollage(packed)
+        } catch (e) {
+            console.error(e)
+            alert("Error adding text: " + e.message)
+        } finally {
+            setLoading(false)
         }
-        const newItems = [...items, newItem]
-
-        // Pack
-        const container = document.querySelector('.pull-to-refresh-container') || document.querySelector('.canvas-container');
-        const containerW = container?.clientWidth || window.innerWidth;
-        const safeW = Math.max(containerW, 320);
-        const packingWidth = safeW / canvasScale;
-        const packed = packItemsTight(newItems, packingWidth, baseSize)
-        setItems(packed)
-
-        // Save
-        await saveCollage(packed)
     }
 
     const handlePack = useCallback((customWidth = null, itemsToPack = null, shouldSave = true) => {
