@@ -33,12 +33,6 @@ export async function textToImageBlob(text, color, inputFontSize = 64) {
 
     lines.forEach((line, i) => {
         const y = padding + (i * fontSize * lineHeight);
-        // Draw outline (stroke)
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = fontSize * 0.08; // Proportional outline thickness
-        ctx.lineJoin = 'round';
-        ctx.strokeText(line, padding, y);
-
         // Draw fill
         ctx.fillText(line, padding, y);
     });

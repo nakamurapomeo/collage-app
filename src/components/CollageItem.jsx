@@ -31,6 +31,9 @@ export function CollageItem({ item, updateItem, deleteItem, onSelect }) {
                         objectFit: 'cover', // 仕様書：切り抜きなしで全体を表示 -> 隙間優先でcoverに変更
                         pointerEvents: 'none',
                         display: 'block',
+                        // Add border only for text images to separate them from other images
+                        border: item.originalText ? '2px solid white' : 'none',
+                        boxSizing: 'border-box'
                     }}
                 />
             )}
