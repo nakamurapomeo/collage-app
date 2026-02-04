@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 
 export function CropModal({ item, onClose, onSave, onDelete, onRandom, onEditOriginalText }) {
     const [scale, setScale] = useState(item.style?.scale || 1)
@@ -7,21 +8,27 @@ export function CropModal({ item, onClose, onSave, onDelete, onRandom, onEditOri
 
     const imgRef = useRef(null)
     const containerRef = useRef(null)
+
+    // Crop State
+    const [isCropMode, setIsCropMode] = useState(false)
     const [cropStart, setCropStart] = useState(null)
     const [cropEnd, setCropEnd] = useState(null)
-    const [isCropping, setIsCropping] = useState(false)
+    const [isSelecting, setIsSelecting] = useState(false)
 
     useEffect(() => {
         setScale(item.style?.scale || 1)
         setLink(item.content_link || '')
         setCropStart(null)
         setCropEnd(null)
-        setPreviewUrl(item.content + (item.content.includes('?') ? '&' : '?') + 't=' + Date.now())
+        // Add timestamp to prevent caching issues if needed, but only if URL params expected
+        setPreviewUrl(item.content)
     }, [item])
 
-    // Pinch Zoom Logic for Preview (similar to Canvas)
+    // Pinch Zoom Logic (Only active when NOT in Crop Mode to prevent conflict)
     const [initialPinchDist, setInitialPinchDist] = useState(null)
     useEffect(() => {
+        if (isCropMode) return; // Disable zoom specific gestures during crop mode (optional, but safer)
+
         const handleTouchStart = (e) => {
             if (e.touches.length === 2) {
                 const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY)
@@ -32,22 +39,29 @@ export function CropModal({ item, onClose, onSave, onDelete, onRandom, onEditOri
             if (e.touches.length === 2 && initialPinchDist) {
                 const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY)
                 const delta = dist - initialPinchDist
-
-                // More responsive: Remove threshold, use proportional factor
-                if (Math.abs(delta) > 1) { // Minimal noise filter
-                    const zoomFactor = 0.005 // Sensitivity
-                    setScale(prev => Math.max(0.5, Math.min(3, prev + (delta * zoomFactor))))
-                    setInitialPinchDist(dist) // Reset to allow continuous smooth zoom
+                if (Math.abs(delta) > 1) {
+                    const zoomFactor = 0.005
+                    setScale(prev => Math.max(0.5, Math.min(5, prev + (delta * zoomFactor))))
+                    setInitialPinchDist(dist)
                 }
             }
         }
         const handleTouchEnd = () => setInitialPinchDist(null)
+
         const el = containerRef.current?.parentElement
         if (el) {
-            el.addEventListener('touchstart', handleTouchStart); el.addEventListener('touchmove', handleTouchMove); el.addEventListener('touchend', handleTouchEnd)
+            el.addEventListener('touchstart', handleTouchStart);
+            el.addEventListener('touchmove', handleTouchMove);
+            el.addEventListener('touchend', handleTouchEnd)
         }
-        return () => { if (el) { el.removeEventListener('touchstart', handleTouchStart); el.removeEventListener('touchmove', handleTouchMove); el.removeEventListener('touchend', handleTouchEnd) } }
-    }, [initialPinchDist])
+        return () => {
+            if (el) {
+                el.removeEventListener('touchstart', handleTouchStart);
+                el.removeEventListener('touchmove', handleTouchMove);
+                el.removeEventListener('touchend', handleTouchEnd)
+            }
+        }
+    }, [initialPinchDist, isCropMode])
 
     const handleLinkOpen = () => { if (link) window.open(link, '_blank') }
 
@@ -55,98 +69,113 @@ export function CropModal({ item, onClose, onSave, onDelete, onRandom, onEditOri
         try {
             const text = await navigator.clipboard.readText()
             if (text) setLink(text)
-        } catch (e) {
-            alert("Clipboard access denied.")
-        }
+        } catch (e) { alert("Clipboard access denied.") }
     }
 
-    // --- handlers ---
-    // --- handlers ---
+    // --- Crop Handlers ---
     const handleStart = (clientX, clientY) => {
-        if (!imgRef.current) return
+        if (!isCropMode || !imgRef.current) return
         const rect = imgRef.current.getBoundingClientRect()
         const x = clientX - rect.left
         const y = clientY - rect.top
 
-        // If clicking on resize handle (handled by specific onMouseDowns), ignore
-        // If clicking outside handles, start new crop or reset
-        setCropStart({ x, y }); setCropEnd({ x, y }); setIsCropping(true)
+        // Ensure click is within image
+        if (x < 0 || y < 0 || x > rect.width || y > rect.height) return
+
+        setCropStart({ x, y })
+        setCropEnd({ x, y })
+        setIsSelecting(true)
     }
 
     const handleMouseDown = (e) => {
+        if (!isCropMode) return;
         e.stopPropagation(); e.preventDefault()
         handleStart(e.clientX, e.clientY)
     }
 
     const handleTouchStartCrop = (e) => {
+        if (!isCropMode) return;
         if (e.touches.length !== 1) return
         e.stopPropagation()
         handleStart(e.touches[0].clientX, e.touches[0].clientY)
     }
 
-    // Resize Handler for Knobs
-    const startResize = (e, corner) => {
-        e.stopPropagation(); e.preventDefault()
-        if (!cropStart || !cropEnd) return
-        setIsCropping(true)
-
-        // Calculate current bounds
-        const x1 = Math.min(cropStart.x, cropEnd.x)
-        const y1 = Math.min(cropStart.y, cropEnd.y)
-        const x2 = Math.max(cropStart.x, cropEnd.x)
-        const y2 = Math.max(cropStart.y, cropEnd.y)
-
-        // Set 'fixed' anchor point to the OPPOSITE corner
-        // Set 'moving' point (cropEnd) to the current corner's position, ready to drag
-        if (corner === 'nw') { setCropStart({ x: x2, y: y2 }); setCropEnd({ x: x1, y: y1 }); }
-        if (corner === 'ne') { setCropStart({ x: x1, y: y2 }); setCropEnd({ x: x2, y: y1 }); }
-        if (corner === 'sw') { setCropStart({ x: x2, y: y1 }); setCropEnd({ x: x1, y: y2 }); }
-        if (corner === 'se') { setCropStart({ x: x1, y: y1 }); setCropEnd({ x: x2, y: y2 }); }
-    }
     const handleMove = (clientX, clientY) => {
-        if (!isCropping || !imgRef.current) return
+        if (!isSelecting || !isCropMode || !imgRef.current) return
         const rect = imgRef.current.getBoundingClientRect()
         const clampedX = Math.max(0, Math.min(clientX - rect.left, rect.width))
         const clampedY = Math.max(0, Math.min(clientY - rect.top, rect.height))
         setCropEnd({ x: clampedX, y: clampedY })
     }
 
-    const handleMouseMove = (e) => { handleMove(e.clientX, e.clientY) }
+    const handleMouseMove = (e) => handleMove(e.clientX, e.clientY)
     const handleTouchMoveCrop = (e) => {
         if (e.touches.length !== 1) return
         handleMove(e.touches[0].clientX, e.touches[0].clientY)
     }
-    const handleMouseUp = () => setIsCropping(false)
+    const handleEnd = () => setIsSelecting(false)
 
-    const handleApplyCrop = async (isCopy = false) => {
+    // Resize Handles
+    const startResize = (e, corner) => {
+        e.stopPropagation(); e.preventDefault()
+        if (!cropStart || !cropEnd) return
+        setIsSelecting(true)
+
+        const x1 = Math.min(cropStart.x, cropEnd.x)
+        const y1 = Math.min(cropStart.y, cropEnd.y)
+        const x2 = Math.max(cropStart.x, cropEnd.x)
+        const y2 = Math.max(cropStart.y, cropEnd.y)
+
+        if (corner === 'nw') { setCropStart({ x: x2, y: y2 }); setCropEnd({ x: x1, y: y1 }); }
+        if (corner === 'ne') { setCropStart({ x: x1, y: y2 }); setCropEnd({ x: x2, y: y1 }); }
+        if (corner === 'sw') { setCropStart({ x: x2, y: y1 }); setCropEnd({ x: x1, y: y2 }); }
+        if (corner === 'se') { setCropStart({ x: x1, y: y1 }); setCropEnd({ x: x2, y: y2 }); }
+    }
+
+    const performCrop = async (isCopy) => {
         try {
             if (!cropStart || !cropEnd || !imgRef.current) return
-            // If just clicking apply without selection (if possible), or minimal drag
-            if (Math.abs(cropEnd.x - cropStart.x) < 20) return
+            if (Math.abs(cropEnd.x - cropStart.x) < 20) { alert("Selection too small"); return; }
 
             const img = imgRef.current
             const rect = img.getBoundingClientRect()
+
+            // Coordinates relative to the displayed image rect
             const x = Math.min(cropStart.x, cropEnd.x)
             const y = Math.min(cropStart.y, cropEnd.y)
             const w = Math.abs(cropEnd.x - cropStart.x)
             const h = Math.abs(cropEnd.y - cropStart.y)
+
+            // Scale to natural image size
             const factorX = img.naturalWidth / rect.width
             const factorY = img.naturalHeight / rect.height
-            const canvas = document.createElement('canvas')
-            canvas.width = w * factorX; canvas.height = h * factorY
-            const ctx = canvas.getContext('2d')
-            ctx.drawImage(img, x * factorX, y * factorY, canvas.width, canvas.height, 0, 0, canvas.width, canvas.height)
-            canvas.toBlob(async (blob) => {
-                if (!blob) { alert("Crop failed"); return; }
 
-                if (isCopy === true) {
-                    onSave(null, { newFile: blob, isCopy: true, originalId: item.id }) // Special signal for copy
+            const canvas = document.createElement('canvas')
+            canvas.width = w * factorX
+            canvas.height = h * factorY
+            const ctx = canvas.getContext('2d')
+
+            // Draw cropped area
+            ctx.drawImage(img, x * factorX, y * factorY, canvas.width, canvas.height, 0, 0, canvas.width, canvas.height)
+
+            canvas.toBlob(async (blob) => {
+                if (!blob) { alert("Crop generation failed"); return; }
+
+                if (isCopy) {
+                    onSave(null, { newFile: blob, isCopy: true, originalId: item.id })
                 } else {
-                    onSave(item.id, { newFile: blob, style: { ...item.style, scale: 1 } })
+                    onSave(item.id, { newFile: blob, style: { ...item.style, scale: 1 } }) // Reset scale on overwrite
                 }
+
+                // Reset state
+                setCropStart(null); setCropEnd(null); setIsCropMode(false);
                 onClose()
-            }, 'image/jpeg', 0.95)
-        } catch (e) { alert("Crop failed: " + e.message) }
+            }, 'image/png', 1.0)
+
+        } catch (e) {
+            console.error(e)
+            alert("Crop failed: " + e.message)
+        }
     }
 
     const handleSaveMeta = () => {
@@ -154,125 +183,200 @@ export function CropModal({ item, onClose, onSave, onDelete, onRandom, onEditOri
         onClose()
     }
 
-    return (
-        <div className="modal-overlay" onClick={onClose} style={{
+    return createPortal(
+        <div style={{
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-            background: 'rgba(0,0,0,0.92)', zIndex: 2000,
+            background: 'rgba(5, 5, 5, 0.95)', zIndex: 9999,
             display: 'flex', flexDirection: 'column',
-            justifyContent: 'center', alignItems: 'center',
-            backdropFilter: 'blur(8px)', userSelect: 'none'
-        }}>
-            <div className="crop-modal" onClick={e => e.stopPropagation()} style={{
-                background: '#151515', width: '98vw', height: '95vh',
-                borderRadius: '8px', overflow: 'hidden',
-                display: 'flex', flexDirection: 'column', position: 'relative', border: '1px solid #333'
-            }}>
-                <div style={{ padding: '10px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#000' }}>
-                    <button onClick={onRandom} style={{ background: '#333', color: '#eee', fontSize: '1rem', padding: '8px 16px' }}>🎲 Random</button>
-                    <button onClick={onClose} style={{ background: 'transparent', fontSize: '2rem', lineHeight: '1rem', color: '#888' }}>×</button>
-                </div>
+            backdropFilter: 'blur(10px)', userSelect: 'none'
+        }} onClick={onClose}>
 
-                <div style={{ flex: 1, background: '#080808', position: 'relative', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'crosshair', userSelect: 'none' }} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
-                    <div ref={containerRef} style={{ position: 'relative', transform: `scale(${scale})`, transformOrigin: 'center', boxShadow: '0 0 50px rgba(0,0,0,0.5)', display: 'flex' }}>
-                        <img ref={imgRef} src={previewUrl} crossOrigin="anonymous" style={{ maxHeight: 'calc(90vh - 160px)', maxWidth: '95vw', display: 'block', pointerEvents: 'none' }} alt="Edit" draggable={false} />
-                        <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', cursor: 'crosshair', touchAction: 'none' }}
-                            onMouseDown={handleMouseDown} onMouseMove={handleMouseMove}
-                            onTouchStart={handleTouchStartCrop} onTouchMove={handleTouchMoveCrop}
-                        />
-                        {cropStart && cropEnd && (
-                            <div style={{
-                                position: 'absolute', left: Math.min(cropStart.x, cropEnd.x) / scale, top: Math.min(cropStart.y, cropEnd.y) / scale,
-                                width: Math.abs(cropEnd.x - cropStart.x) / scale, height: Math.abs(cropEnd.y - cropStart.y) / scale,
-                                border: `${2 / scale}px solid white`, boxShadow: `0 0 0 9999px rgba(0, 0, 0, 0.6)`, pointerEvents: 'none'
-                            }}>
-                                {/* Resize Handles */}
-                                {['nw', 'ne', 'sw', 'se'].map(pos => (
-                                    <div key={pos}
-                                        onMouseDown={(e) => { e.stopPropagation(); e.preventDefault(); startResize(e.clientX, e.clientY, pos) }}
-                                        onTouchStart={(e) => { e.stopPropagation(); e.preventDefault(); startResize(e.touches[0].clientX, e.touches[0].clientY, pos) }}
-                                        style={{
-                                            position: 'absolute',
-                                            width: '20px', height: '20px', background: 'white', borderRadius: '50%',
-                                            top: pos.includes('n') ? '-10px' : 'auto', bottom: pos.includes('s') ? '-10px' : 'auto',
-                                            left: pos.includes('w') ? '-10px' : 'auto', right: pos.includes('e') ? '-10px' : 'auto',
-                                            cursor: 'pointer', pointerEvents: 'auto', border: '2px solid #333'
-                                        }}
-                                    />
-                                ))}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Prominent Link Open Button Overlay - Emoji Only, Semi-Transparent */}
-                    {link && (
-                        <button
-                            onClick={handleLinkOpen}
-                            style={{
-                                position: 'absolute', bottom: 20, right: 20,
-                                background: 'rgba(50, 50, 50, 0.6)',
-                                color: 'white',
-                                border: '1px solid rgba(255,255,255,0.3)',
-                                borderRadius: '50%',
-                                width: '60px', height: '60px',
-                                fontSize: '2rem',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                backdropFilter: 'blur(5px)',
-                                cursor: 'pointer',
-                                zIndex: 100
-                            }}
-                            title="Open Link"
-                        >
-                            🔗
+            {/* 1. Header Area with Controls */}
+            <div style={{
+                padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                background: 'rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(255,255,255,0.1)'
+            }} onClick={e => e.stopPropagation()}>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                    <button onClick={onRandom} style={secondaryBtnStyle}>🎲 Random</button>
+                    {item.originalText && (
+                        <button onClick={() => { onClose(); onEditOriginalText(item); }} style={accentBtnStyle}>
+                            🅰️ Edit Text
                         </button>
                     )}
                 </div>
 
-                <div style={{ padding: '20px', background: '#111', color: '#eee', borderTop: '1px solid #333' }}>
-                    <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-                        <div style={{ flex: 1, minWidth: '200px' }}>
-                            {/* Zoom Slider Removed - Use Pinch! */}
-                            <div style={{ color: '#666', fontSize: '0.8rem', textAlign: 'center', marginTop: '10px' }}>
-                                Pinch to Zoom Image
-                            </div>
+                {/* Crop Mode Toggle */}
+                <div style={{ display: 'flex', gap: '10px' }}>
+                    <button
+                        onClick={() => {
+                            setIsCropMode(!isCropMode);
+                            if (isCropMode) { setCropStart(null); setCropEnd(null); } // Clear on exit
+                        }}
+                        style={{
+                            ...primaryBtnStyle,
+                            background: isCropMode ? '#fff' : 'rgba(255,255,255,0.1)',
+                            color: isCropMode ? '#000' : '#fff'
+                        }}
+                    >
+                        {isCropMode ? 'Stop Cropping' : '✂️ Start Crop'}
+                    </button>
+                    <button onClick={onClose} style={closeBtnStyle}>×</button>
+                </div>
+            </div>
+
+            {/* 2. Main Image Area - Maximized */}
+            <div style={{
+                flex: 1, position: 'relative', overflow: 'hidden',
+                display: 'flex', justifyContent: 'center', alignItems: 'center'
+            }}
+                onMouseUp={handleEnd} onMouseLeave={handleEnd}>
+
+                <div ref={containerRef} style={{
+                    position: 'relative',
+                    transform: `scale(${scale})`, transformOrigin: 'center',
+                    transition: isSelecting ? 'none' : 'transform 0.1s ease-out' // Smooth zoom, instant crop
+                }}>
+                    <img
+                        ref={imgRef} src={previewUrl}
+                        style={{
+                            maxHeight: '80vh', maxWidth: '95vw', // Limit to viewport mostly
+                            objectFit: 'contain',
+                            display: 'block', pointerEvents: 'none',
+                            boxShadow: '0 0 40px rgba(0,0,0,0.5)'
+                        }}
+                        draggable={false}
+                    />
+
+                    {/* Overlay for interaction */}
+                    <div style={{
+                        position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+                        cursor: isCropMode ? 'crosshair' : 'default',
+                        touchAction: 'none'
+                    }}
+                        onMouseDown={handleMouseDown} onMouseMove={handleMouseMove}
+                        onTouchStart={handleTouchStartCrop} onTouchMove={handleTouchMoveCrop}
+                    />
+
+                    {/* Crop Box */}
+                    {isCropMode && cropStart && cropEnd && (
+                        <div style={{
+                            position: 'absolute',
+                            left: Math.min(cropStart.x, cropEnd.x),
+                            top: Math.min(cropStart.y, cropEnd.y),
+                            width: Math.abs(cropEnd.x - cropStart.x),
+                            height: Math.abs(cropEnd.y - cropStart.y),
+                            border: '2px solid #fff',
+                            boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.7)', // Dim outside
+                            pointerEvents: 'none'
+                        }}>
+                            {/* Handles */}
+                            {['nw', 'ne', 'sw', 'se'].map(pos => (
+                                <div key={pos}
+                                    onMouseDown={(e) => { e.stopPropagation(); e.preventDefault(); startResize(e.clientX, e.clientY, pos) }}
+                                    onTouchStart={(e) => { e.stopPropagation(); e.preventDefault(); startResize(e.touches[0].clientX, e.touches[0].clientY, pos) }}
+                                    style={{
+                                        position: 'absolute', width: 20, height: 20, background: '#fff',
+                                        top: pos.includes('n') ? -10 : 'auto', bottom: pos.includes('s') ? -10 : 'auto',
+                                        left: pos.includes('w') ? -10 : 'auto', right: pos.includes('e') ? -10 : 'auto',
+                                        cursor: 'pointer', pointerEvents: 'auto', borderRadius: '50%'
+                                    }}
+                                />
+                            ))}
                         </div>
-                        <div style={{ flex: 2, minWidth: '300px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                                <span style={{ color: '#aaa' }}>Link URL</span>
-                            </div>
-                            <div style={{ display: 'flex', gap: '8px' }}>
-                                <input type="text" value={link} onChange={e => setLink(e.target.value)} placeholder="https://..." style={{ flex: 1, background: '#222', border: '1px solid #444', color: 'white', padding: '8px', borderRadius: '4px' }} />
-                                <button onClick={handlePasteLink} style={{ background: '#333', padding: '0 12px', cursor: 'pointer' }} title="Paste">📋</button>
-                            </div>
-                        </div>
+                    )}
+                </div>
+
+                {/* Link Button (Overlay in View Mode) */}
+                {!isCropMode && link && (
+                    <button onClick={handleLinkOpen} style={{
+                        position: 'absolute', bottom: 30, right: 30,
+                        width: 60, height: 60, borderRadius: '50%',
+                        background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)',
+                        border: '1px solid rgba(255,255,255,0.2)',
+                        fontSize: '1.8rem', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        zIndex: 10
+                    }}>
+                        🔗
+                    </button>
+                )}
+            </div>
+
+            {/* 3. Footer / Action Area */}
+            <div style={{
+                padding: '20px', background: 'rgba(20,20,20,0.95)', borderTop: '1px solid rgba(255,255,255,0.1)',
+                display: 'flex', flexDirection: 'column', gap: '15px'
+            }} onClick={e => e.stopPropagation()}>
+
+                {/* Crop Actions (Visible only when selection exists) */}
+                {isCropMode && cropStart && cropEnd && Math.abs(cropEnd.x - cropStart.x) > 10 && (
+                    <div style={{
+                        padding: '10px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px',
+                        display: 'flex', justifyContent: 'center', gap: '15px',
+                        animation: 'slideUp 0.3s'
+                    }}>
+                        <style>{`@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }`}</style>
+                        <button onClick={() => performCrop(false)} style={actionBtnStyle('orange')}>
+                            🔄 Replace Original
+                        </button>
+                        <button onClick={() => performCrop(true)} style={actionBtnStyle('#007bff')}>
+                            📑 Save as Copy
+                        </button>
                     </div>
-                    <div style={{ display: 'flex', gap: '15px', marginTop: '20px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-                        <button onClick={() => { if (confirm('Delete image?')) onDelete(item.id); }} style={{ background: '#331111', color: '#ff6666', border: '1px solid #552222', padding: '10px 20px' }}>🗑️ Delete</button>
+                )}
 
-                        {item.originalText && onEditOriginalText && (
-                            <button onClick={() => { onClose(); onEditOriginalText(item); }} style={{ background: '#3333aa', color: 'white', fontWeight: 'bold', padding: '10px 20px', border: '1px solid #5555ff' }}>
-                                🅰️ Edit Text
-                            </button>
-                        )}
+                {/* Standard Meta & Tools */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flex: 1, minWidth: '300px' }}>
+                        <span style={{ color: '#888' }}>Link:</span>
+                        <input
+                            value={link} onChange={e => setLink(e.target.value)}
+                            placeholder="https://..."
+                            style={inputStyle}
+                        />
+                        <button onClick={handlePasteLink} style={iconBtnStyle} title="Paste Clipboard">📋</button>
+                    </div>
 
-                        <div style={{ flex: 1 }}></div>
-
-                        {/* Copy Button */}
-                        <button onClick={() => handleApplyCrop(true)} disabled={!cropStart || !cropEnd} style={{ background: '#0077ff', color: 'white', fontWeight: 'bold', padding: '10px 20px', opacity: (!cropStart || !cropEnd) ? 0.5 : 1 }}>
-                            📑 Copy & Save
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                        <button onClick={() => { if (confirm('Delete this item?')) onDelete(item.id); }} style={dangerBtnStyle}>
+                            🗑️ Delete
                         </button>
-
-                        {/* Toggle Crop Button */}
-                        <button
-                            onClick={isCropping ? handleApplyCrop : () => { setIsCropping(true); setCropStart({ x: 0, y: 0 }); /* Dummy start to enable mode? No, handled by mouse. Just prompt. */ }}
-                            style={{ background: cropStart ? '#fff' : '#333', color: cropStart ? '#000' : '#888', fontWeight: 'bold', padding: '10px 30px' }}
-                        >
-                            {cropStart ? '✂️ Apply Crop' : '✂️ Crop Mode'}
+                        <button onClick={handleSaveMeta} style={doneBtnStyle}>
+                            Done
                         </button>
-
-                        <button onClick={handleSaveMeta} style={{ background: '#ffd700', color: '#000', fontWeight: 'bold', padding: '10px 30px', fontSize: '1.1rem' }}>Done</button>
                     </div>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     )
+}
+
+// --- Styles ---
+const primaryBtnStyle = {
+    padding: '8px 16px', borderRadius: '20px', border: 'none', cursor: 'pointer', fontWeight: 'bold', transition: 'all 0.2s'
+}
+const secondaryBtnStyle = {
+    padding: '8px 16px', background: 'rgba(255,255,255,0.1)', color: '#ccc', borderRadius: '20px', border: 'none', cursor: 'pointer'
+}
+const accentBtnStyle = {
+    padding: '8px 16px', background: 'rgba(100,100,255,0.3)', color: '#aaf', borderRadius: '20px', border: '1px solid rgba(100,100,255,0.5)', cursor: 'pointer'
+}
+const closeBtnStyle = {
+    background: 'transparent', border: 'none', color: '#fff', fontSize: '1.5rem', cursor: 'pointer', padding: '0 10px'
+}
+const actionBtnStyle = (bg) => ({
+    padding: '10px 20px', background: bg, color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem'
+})
+const dangerBtnStyle = {
+    padding: '10px 20px', background: 'rgba(255,50,50,0.2)', color: '#f88', border: '1px solid rgba(255,50,50,0.3)', borderRadius: '8px', cursor: 'pointer'
+}
+const doneBtnStyle = {
+    padding: '10px 30px', background: '#fff', color: '#000', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem'
+}
+const inputStyle = {
+    flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '8px 12px', borderRadius: '6px'
+}
+const iconBtnStyle = {
+    background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', padding: '8px', borderRadius: '6px', cursor: 'pointer'
 }
