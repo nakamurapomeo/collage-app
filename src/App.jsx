@@ -6,6 +6,7 @@ import { TextModal } from './components/TextModal'
 import { Login } from './components/Login'
 import { packItemsTight } from './utils/packing'
 import JSZip from 'jszip'
+import { measureText } from './utils/textUtils'
 
 function App() {
     const [isLoggedIn, setIsLoggedIn] = useState(false)
@@ -222,11 +223,15 @@ function App() {
     }, [collageId, loading, collageSets, items])
 
     const handleAddText = async ({ text, color, size }) => {
-        const width = text.length * size * 0.6
+        const { width: textWidth, height: textHeight } = measureText(text, size)
+        const padding = 4 // 2px * 2
+        const width = textWidth + padding
+        const height = textHeight + padding // tighten height
+
         const newItem = {
             id: 'text-' + Date.now(),
             collage_id: collageId, type: 'text', content: text,
-            x: 0, y: 0, width: width, height: size * 1.5,
+            x: 0, y: 0, width: width, height: height,
             style: { color, fontSize: size }, z_index: items.length + 10
         }
         const newItems = [...items, newItem]

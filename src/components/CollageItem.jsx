@@ -40,7 +40,8 @@ export function CollageItem({ item, updateItem, deleteItem, onSelect }) {
                     color: item.style?.color || '#fff',
                     textShadow: '0 2px 4px rgba(0,0,0,0.5)',
                     whiteSpace: 'pre-wrap',
-                    padding: '4px',
+                    padding: '2px',
+                    lineHeight: '1.1',
                     background: 'rgba(0,0,0,0.2)',
                     borderRadius: '4px'
                 }}>
