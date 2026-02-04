@@ -98,8 +98,20 @@ function App() {
 
         if (listData) {
             setCollageSets(listData)
-            if (!collageId && listData.length > 0) setCollageId(listData[0].id)
-            else if (!collageId && listData.length === 0) createCollage('My First Collage')
+
+            // Try to restore last viewed collage
+            const savedId = localStorage.getItem('last_collage_id')
+            const savedSetExists = savedId && listData.find(s => s.id === savedId)
+
+            if (!collageId) {
+                if (savedSetExists) {
+                    setCollageId(savedId)
+                } else if (listData.length > 0) {
+                    setCollageId(listData[0].id)
+                } else {
+                    createCollage('My First Collage')
+                }
+            }
         }
 
         // 2. Fetch Current Collage Items (if selected or just set)
@@ -128,6 +140,13 @@ function App() {
 
         setLoading(false)
     }, [isLoggedIn, collageId]) // Removed canvasScale, baseSize from dependencies
+
+    // Save current collage ID to localStorage
+    useEffect(() => {
+        if (collageId) {
+            localStorage.setItem('last_collage_id', collageId)
+        }
+    }, [collageId])
 
     // Main Data Fetch Effect (Initial & on ID change)
     useEffect(() => {
