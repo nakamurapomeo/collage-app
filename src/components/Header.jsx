@@ -21,7 +21,8 @@ export function Header({
     status,
     fileInputRef,
     onPaste,
-    onReorderSets
+    onReorderSets,
+    onToggleSidebar
 }) {
     const [showDropdown, setShowDropdown] = useState(false);
     const [newSetName, setNewSetName] = useState('');
@@ -99,51 +100,11 @@ export function Header({
                 {/* Set Selector */}
                 <div style={{ position: 'relative' }}>
                     <button
-                        onClick={() => setShowDropdown(!showDropdown)}
+                        onClick={onToggleSidebar}
                         style={{ background: 'transparent', color: '#ffd700', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px', border: 'none', ...titleStyle }}
                     >
-                        {title} <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>▼</span>
+                        {title} <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>☰</span>
                     </button>
-                    {showDropdown && (
-                        <>
-                            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, cursor: 'default' }} onClick={() => setShowDropdown(false)} />
-                            <div style={{ position: 'absolute', top: '100%', left: 0, minWidth: '250px', background: '#222', border: '1px solid #444', borderRadius: '8px', zIndex: 1001, padding: '5px' }}>
-                                <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
-                                    {sets.map(set => (
-                                        <div
-                                            key={set.id}
-                                            draggable="true"
-                                            onDragStart={(e) => handleDragStart(e, set.id)}
-                                            onDragOver={(e) => handleDragOver(e, set.id)}
-                                            onDrop={(e) => handleDrop(e, set.id)}
-                                            style={{
-                                                padding: '8px 12px', display: 'flex', justifyContent: 'space-between',
-                                                color: set.id === currentSetId ? '#ffd700' : '#ddd',
-                                                borderTop: dropTarget?.id === set.id && dropTarget.position === 'top' ? '2px solid #007bff' : '2px solid transparent',
-                                                borderBottom: dropTarget?.id === set.id && dropTarget.position === 'bottom' ? '2px solid #007bff' : '2px solid transparent',
-                                                opacity: draggingId === set.id ? 0.5 : 1
-                                            }}
-                                        >
-                                            {editName === set.id ? (
-                                                <input value={editNameValue} onChange={e => setEditNameValue(e.target.value)} onBlur={() => saveRename(set.id)} autoFocus style={{ background: '#333', color: 'white', border: 'none' }} />
-                                            ) : (
-                                                <span onClick={() => { onSwitchSet(set.id); setShowDropdown(false) }} style={{ cursor: 'pointer', flex: 1 }}>{set.name}</span>
-                                            )}
-                                            <div style={{ display: 'flex', gap: 5 }}>
-                                                <button onClick={(e) => { e.stopPropagation(); startRename(set) }} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>✏️</button>
-                                                <button onClick={(e) => { e.stopPropagation(); if (confirm('Delete?')) onDeleteSet(set.id) }} style={{ background: 'transparent', color: '#f44', border: 'none', cursor: 'pointer' }}>🗑️</button>
-                                                <span style={{ cursor: 'move', marginLeft: 5 }}>≡</span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                                <div style={{ borderTop: '1px solid #444', padding: '5px', display: 'flex' }}>
-                                    <input placeholder="New Set..." value={newSetName} onChange={e => setNewSetName(e.target.value)} style={{ flex: 1, background: '#333', border: 'none', color: 'white', padding: 5 }} />
-                                    <button onClick={handleCreate} style={{ background: 'transparent', color: 'white', border: 'none', cursor: 'pointer' }}>＋</button>
-                                </div>
-                            </div>
-                        </>
-                    )}
                 </div>
             </div>
 

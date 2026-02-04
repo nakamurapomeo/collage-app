@@ -3,6 +3,7 @@ import { apiClient } from './apiClient'
 import { Header } from './components/Header'
 import { Canvas } from './components/Canvas'
 import { TextModal } from './components/TextModal'
+import { Sidebar } from './components/Sidebar'
 import { Login } from './components/Login'
 import { packItemsTight } from './utils/packing'
 import JSZip from 'jszip'
@@ -12,6 +13,7 @@ function App() {
     const [isLoggedIn, setIsLoggedIn] = useState(false)
     const [authChecking, setAuthChecking] = useState(true)
     const [globalError, setGlobalError] = useState(null)
+    const [showSidebar, setShowSidebar] = useState(false) // Sidebar State
 
     const [collageId, setCollageId] = useState(null)
     const [collageSets, setCollageSets] = useState([])
@@ -470,8 +472,62 @@ function App() {
     const currentSet = collageSets.find(s => s.id === collageId)
     if (!collageId) return <div style={{ color: 'white', padding: 20 }}>Loading Collage...</div>
 
+    // Touch Handling for Swipe Sidebar
+    const touchStartRef = useRef(null)
+    const touchMoveRef = useRef(null)
+
+    const handleTouchStart = (e) => {
+        touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+    }
+    const handleTouchMove = (e) => {
+        touchMoveRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+    }
+    const handleTouchEnd = () => {
+        if (!touchStartRef.current || !touchMoveRef.current) return
+
+        const deltaX = touchMoveRef.current.x - touchStartRef.current.x
+        const deltaY = touchMoveRef.current.y - touchStartRef.current.y
+
+        // Thresholds
+        const minSwipe = 60
+        const maxVertical = 50
+
+        // If swipe is primarily horizontal
+        if (Math.abs(deltaX) > minSwipe && Math.abs(deltaY) < maxVertical) {
+            if (deltaX > 0) {
+                // Left -> Right: Open
+                // Only if starting from left edge? Or anywhere? 
+                // User said "Left to right to show".
+                // To avoid accidental triggers, let's say anywhere is fine BUT usually edge is better.
+                // Let's allow anywhere for now as requested "easy switching".
+                setShowSidebar(true)
+            } else {
+                // Right -> Left: Close
+                setShowSidebar(false)
+            }
+        }
+
+        touchStartRef.current = null
+        touchMoveRef.current = null
+    }
+
     return (
-        <div className="app-container">
+        <div
+            className="app-container"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+        >
+            <Sidebar
+                isOpen={showSidebar}
+                onClose={() => setShowSidebar(false)}
+                sets={collageSets}
+                currentSetId={collageId}
+                onSwitchSet={setCollageId}
+                onCreateSet={createCollage}
+                onRenameSet={renameCollage}
+                onDeleteSet={deleteCollage}
+            />
             <Header
                 title={currentSet?.name || 'Collage'}
                 sets={collageSets} currentSetId={collageId}
@@ -485,6 +541,7 @@ function App() {
                 onRefresh={fetchCollages}
                 onPaste={handlePasteImage}
                 onReorderSets={handleReorderSets}
+                onToggleSidebar={() => setShowSidebar(!showSidebar)}
             />
             <Canvas
                 items={items} setItems={setItems} collageId={collageId}
