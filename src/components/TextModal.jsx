@@ -1,9 +1,9 @@
 import { useState } from 'react'
 
-export function TextModal({ onClose, onAdd }) {
-    const [text, setText] = useState('')
-    const [color, setColor] = useState('#ffffff')
-    const [size, setSize] = useState(24)
+export function TextModal({ onClose, onAdd, initialValues = null }) {
+    const [text, setText] = useState(initialValues?.text || '')
+    const [color, setColor] = useState(initialValues?.color || '#ffffff')
+    const [size, setSize] = useState(initialValues?.size || 24)
 
     const handleAdd = () => {
         if (text.trim()) {

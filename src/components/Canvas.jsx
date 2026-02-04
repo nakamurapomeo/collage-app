@@ -7,7 +7,7 @@ import { PullToRefresh } from './PullToRefresh'
 export function Canvas({
     items, setItems, collageId, fileInputRef, baseSize,
     onPack, onShuffle, canvasScale, setCanvasScale,
-    onSave, onRefresh // Added onRefresh
+    onSave, onRefresh, onRequestTextEdit // Added onRequestTextEdit
 }) {
     const [uploading, setUploading] = useState(false)
     const [selectedItem, setSelectedItem] = useState(null)
@@ -281,7 +281,7 @@ export function Canvas({
             </PullToRefresh>
 
             {selectedItem && (
-                <CropModal item={selectedItem} onClose={() => setSelectedItem(null)} onSave={updateItem} onDelete={deleteItem} onRandom={handleRandom} />
+                <CropModal item={selectedItem} onClose={() => setSelectedItem(null)} onSave={updateItem} onDelete={deleteItem} onRandom={handleRandom} onEditOriginalText={onRequestTextEdit} />
             )}
 
             {uploading && <div style={{ position: 'fixed', bottom: 20, right: 20, background: '#333', padding: 10, borderRadius: 8, color: 'white', zIndex: 100 }}>Uploading...</div>}

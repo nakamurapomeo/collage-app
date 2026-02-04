@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react'
 
-export function CropModal({ item, onClose, onSave, onDelete, onRandom }) {
+export function CropModal({ item, onClose, onSave, onDelete, onRandom, onEditOriginalText }) {
     const [scale, setScale] = useState(item.style?.scale || 1)
     const [link, setLink] = useState(item.content_link || '')
     const [previewUrl, setPreviewUrl] = useState('')
@@ -247,6 +247,13 @@ export function CropModal({ item, onClose, onSave, onDelete, onRandom }) {
                     </div>
                     <div style={{ display: 'flex', gap: '15px', marginTop: '20px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                         <button onClick={() => { if (confirm('Delete image?')) onDelete(item.id); }} style={{ background: '#331111', color: '#ff6666', border: '1px solid #552222', padding: '10px 20px' }}>🗑️ Delete</button>
+
+                        {item.originalText && onEditOriginalText && (
+                            <button onClick={() => { onClose(); onEditOriginalText(item); }} style={{ background: '#3333aa', color: 'white', fontWeight: 'bold', padding: '10px 20px', border: '1px solid #5555ff' }}>
+                                🅰️ Edit Text
+                            </button>
+                        )}
+
                         <div style={{ flex: 1 }}></div>
 
                         {/* Copy Button */}

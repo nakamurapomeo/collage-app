@@ -29,6 +29,7 @@ function App() {
     }, [canvasScale])
 
     const [showTextModal, setShowTextModal] = useState(false)
+    const [editingTextItem, setEditingTextItem] = useState(null)
     const [toast, setToast] = useState(null)
     const fileInputRef = useRef(null)
     const lastLocalInteractionRef = useRef(0)
@@ -256,7 +257,12 @@ function App() {
                 collage_id: collageId, type: 'image', content: publicUrl,
                 x: 0, y: 0, width: width, height: baseSize,
                 aspect_ratio: aspectRatio,
-                z_index: items.length + 1, style: {}
+                z_index: items.length + 1,
+                style: {},
+                // Save metadata for re-editing
+                originalText: text,
+                originalColor: color,
+                originalSize: size
             }
 
             const newItems = [...items, newItem]
@@ -303,6 +309,57 @@ function App() {
             return packed
         })
     }, [collageId, canvasScale, saveCollage])
+
+    const handleUpdateTextItem = async (id, newText, newColor, newSize) => {
+        setLoading(true)
+        try {
+            const item = items.find(i => i.id === id)
+            if (!item) return
+
+            // 1. Generate new image
+            const blob = await textToImageBlob(newText, newColor, newSize)
+            const file = new File([blob], "text-image-edit.png", { type: "image/png" })
+
+            // 2. Upload
+            const path = `${collageId}/${Date.now()}-text-edit.png`
+            const { data: publicUrl, error } = await apiClient.storage.upload(file, path)
+            if (error) { alert("Upload failed: " + error); return; }
+
+            // 3. Get new dimensions
+            const img = new Image()
+            img.src = publicUrl
+            await new Promise(r => img.onload = r)
+            const aspectRatio = img.naturalWidth / img.naturalHeight
+
+            // 4. Update item (maintain height, adjust width)
+            // Use current item height as base to keep relative size
+            const currentHeight = item.height || baseSize
+            const newWidth = currentHeight * aspectRatio
+
+            const updatedItem = {
+                ...item,
+                content: publicUrl,
+                width: newWidth,
+                height: currentHeight,
+                aspect_ratio: aspectRatio,
+                originalText: newText,
+                originalColor: newColor,
+                originalSize: newSize
+            }
+
+            const updatedList = items.map(i => i.id === id ? updatedItem : i)
+            setItems(updatedList)
+            await saveCollage(updatedList)
+            setToast('✏️')
+            setTimeout(() => setToast(null), 2000)
+
+        } catch (e) {
+            console.error(e)
+            alert("Failed to update text: " + e.message)
+        } finally {
+            setLoading(false)
+        }
+    }
 
     const handlePasteImage = async () => {
         try {
@@ -434,11 +491,31 @@ function App() {
                 fileInputRef={fileInputRef} baseSize={baseSize}
                 canvasScale={canvasScale} setCanvasScale={setCanvasScale}
                 onPack={handlePack} onShuffle={handleShuffle}
-                // Pass saveCollage to Canvas for image updates
                 onSave={saveCollage}
                 onRefresh={fetchCollages} // Added for Pull-to-Refresh
+                // Pass request handler to Canvas so CropModal can trigger it
+                onRequestTextEdit={(item) => {
+                    setEditingTextItem(item)
+                    setShowTextModal(true)
+                }}
             />
-            {showTextModal && <TextModal onClose={() => setShowTextModal(false)} onAdd={handleAddText} />}
+            {showTextModal && (
+                <TextModal
+                    onClose={() => { setShowTextModal(false); setEditingTextItem(null); }}
+                    initialValues={editingTextItem ? {
+                        text: editingTextItem.originalText,
+                        color: editingTextItem.originalColor,
+                        size: editingTextItem.originalSize
+                    } : null}
+                    onAdd={(data) => {
+                        if (editingTextItem) {
+                            handleUpdateTextItem(editingTextItem.id, data.text, data.color, data.size)
+                        } else {
+                            handleAddText(data)
+                        }
+                    }}
+                />
+            )}
 
             {toast && (
                 <div style={{
