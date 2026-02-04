@@ -229,7 +229,8 @@ export function CropModal({ item, onClose, onSave, onDelete, onRandom, onEditOri
                 flex: 1, position: 'relative', overflow: 'hidden',
                 display: 'flex', justifyContent: 'center', alignItems: 'center'
             }}
-                onMouseUp={handleEnd} onMouseLeave={handleEnd}>
+                onMouseUp={handleEnd} onMouseLeave={handleEnd}
+                onClick={e => e.stopPropagation()}>
 
                 <div ref={containerRef} style={{
                     position: 'relative',
