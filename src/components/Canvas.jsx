@@ -254,9 +254,9 @@ export function Canvas({
             <PullToRefresh onRefresh={onShuffle}>
                 <div style={{
                     minHeight: 'calc(100vh - 60px + 1px)',
-                    height: totalHeight > 0 ? `${totalHeight * canvasScale + 20}px` : '100%', // Reduced buffer
+                    height: totalHeight > 0 ? `${totalHeight * canvasScale + 40}px` : '100%',
                     position: 'relative',
-                    paddingBottom: '100px' // Reasonable buffer for scrolling
+                    paddingBottom: '0px'
                 }}>
                     {/* MinHeight ensures scrollable even when empty-ish */}
 
