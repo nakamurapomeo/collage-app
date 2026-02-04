@@ -18,7 +18,7 @@ export async function onRequest(context) {
         if (Array.isArray(newSets)) {
             // We only save metadata fields to list
             const cleanList = newSets.map(s => ({
-                id: s.id, name: s.name, created_at: s.created_at, updated_at: s.updated_at
+                id: s.id, name: s.name, color: s.color, created_at: s.created_at, updated_at: s.updated_at
             }));
             await env.COLLAGE_KV.put('collage_list', JSON.stringify(cleanList));
             return new Response(JSON.stringify({ success: true }), { headers: { 'Content-Type': 'application/json' } });
@@ -73,10 +73,11 @@ export async function onRequest(context) {
         if (existingIdx >= 0) {
             // Update metadata
             if (body.name) list[existingIdx].name = body.name;
+            if (body.color) list[existingIdx].color = body.color;
             list[existingIdx].updated_at = now;
         } else {
             // Create new
-            list.push({ id, name: body.name || 'New Collage', created_at: now, updated_at: now });
+            list.push({ id, name: body.name || 'New Collage', color: body.color || null, created_at: now, updated_at: now });
         }
 
         await env.COLLAGE_KV.put('collage_list', JSON.stringify(list));
@@ -92,8 +93,9 @@ export async function onRequest(context) {
         // - `collage_list`: metadata only (lightweight)
         // - `collage:{id}`: full data (items + metadata)
 
-        let fullData = await env.COLLAGE_KV.get(`collage:${id}`, { type: 'json' }) || { id, name: body.name, items: [] };
+        let fullData = await env.COLLAGE_KV.get(`collage:${id}`, { type: 'json' }) || { id, name: body.name, color: body.color, items: [] };
         if (body.name) fullData.name = body.name;
+        if (body.color) fullData.color = body.color; // Update color
         if (body.items) fullData.items = body.items; // Full replace of items
 
         await env.COLLAGE_KV.put(`collage:${id}`, JSON.stringify(fullData));

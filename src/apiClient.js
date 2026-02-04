@@ -63,12 +63,12 @@ export const apiClient = {
                 return { data: null, error: 'Connection error' };
             }
         },
-        save: async (id, name, items) => {
+        save: async (id, name, items, color) => {
             try {
                 const res = await fetch(`${BASE_URL}/collages`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id, name, items })
+                    body: JSON.stringify({ id, name, items, color })
                 });
                 return handleResponse(res);
             } catch (e) {

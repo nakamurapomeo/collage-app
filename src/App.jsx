@@ -223,12 +223,27 @@ function App() {
         }
     }
 
-    const renameCollage = async (id, newName) => {
+    const updateCollageMetadata = async (id, meta) => {
         const oldSets = collageSets
-        setCollageSets(prev => prev.map(s => s.id === id ? { ...s, name: newName } : s))
-        const { error } = await apiClient.collages.save(id, newName)
+        setCollageSets(prev => prev.map(s => s.id === id ? { ...s, ...meta } : s))
+
+        // We need to persist this. 'save' endpoint handles partial updates if we send them?
+        // Our API implementation does partial updates for name/color if items is missing/null, 
+        // BUT saveCollage below sends items.
+        // Let's use saveCollage logic or call API directly?
+        // API save expects (id, name, items, color).
+        // If we want to JUST update metadata without touching items, we might need to be careful not to overwrite items with empty array.
+        // In our API implementation: "if (body.items) fullData.items = body.items". 
+        // So if we omit items, it keeps existing. Good.
+        // But saveCollage passes items.
+
+        const currentSet = collageSets.find(s => s.id === id)
+        const newName = meta.name || currentSet.name
+        const newColor = meta.color !== undefined ? meta.color : currentSet.color
+
+        const { error } = await apiClient.collages.save(id, newName, undefined, newColor)
         if (error) {
-            alert('Failed to rename collage: ' + error)
+            alert('Failed to update collage: ' + error)
             setCollageSets(oldSets)
         }
     }
@@ -259,9 +274,11 @@ function App() {
         setToast('☁️')
 
         const targetItems = overrideItems || items
-        const currentName = collageSets.find(s => s.id === collageId)?.name || 'Collage'
+        const currentSet = collageSets.find(s => s.id === collageId)
+        const currentName = currentSet?.name || 'Collage'
+        const currentColor = currentSet?.color
 
-        const { data, error } = await apiClient.collages.save(collageId, currentName, targetItems)
+        const { data, error } = await apiClient.collages.save(collageId, currentName, targetItems, currentColor)
 
         if (error) {
             setSyncStatus('error')
@@ -540,14 +557,17 @@ function App() {
                 sets={collageSets}
                 currentSetId={collageId}
                 onSwitchSet={setCollageId}
+                onSwitchSet={setCollageId}
                 onCreateSet={createCollage}
-                onRenameSet={renameCollage}
+                onUpdateMetadata={updateCollageMetadata}
                 onDeleteSet={deleteCollage}
             />
             <Header
                 title={currentSet?.name || 'Collage'}
                 sets={collageSets} currentSetId={collageId}
-                onSwitchSet={setCollageId} onCreateSet={createCollage} onRenameSet={renameCollage} onDeleteSet={deleteCollage}
+                onSwitchSet={setCollageId} onCreateSet={createCollage}
+                onRenameSet={(id, name) => updateCollageMetadata(id, { name })} // Backwards compat for Header if needed
+                onDeleteSet={deleteCollage}
                 onExportZip={handleExportZip} onImportZip={handleImportZip}
                 status={syncStatus}
                 onPack={() => handlePack()}
