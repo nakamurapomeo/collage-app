@@ -35,18 +35,22 @@ export function CollageItem({ item, updateItem, deleteItem, onSelect }) {
                 />
             )}
             {item.type === 'text' && (
-                <div style={{
-                    fontSize: `${item.style?.fontSize || 24}px`,
-                    color: item.style?.color || '#fff',
-                    textShadow: '0 2px 4px rgba(0,0,0,0.5)',
-                    whiteSpace: 'pre-wrap',
-                    padding: '2px',
-                    lineHeight: '1.1',
-                    background: 'rgba(0,0,0,0.2)',
-                    borderRadius: '4px'
-                }}>
-                    {item.content}
-                </div>
+                <svg width="100%" height="100%" viewBox={`0 0 ${item.width} ${item.height}`} style={{ display: 'block' }}>
+                    <text
+                        x={(item.style?.paddingLeft || 0)} // Offset to accommodate left overflowing pixels
+                        y={(item.style?.ascent || (item.style?.fontSize ? item.style.fontSize * 0.8 : 20)) + 1} // +1 for buffer
+                        fill={item.style?.color || '#fff'}
+                        fontSize={item.style?.fontSize || 24}
+                        fontFamily="sans-serif"
+                        textAnchor="start"
+                        style={{
+                            textShadow: '0 2px 4px rgba(0,0,0,0.5)',
+                            // No userSelect here, handled by parent
+                        }}
+                    >
+                        {item.content}
+                    </text>
+                </svg>
             )}
         </div>
     )

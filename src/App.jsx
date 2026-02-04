@@ -223,16 +223,14 @@ function App() {
     }, [collageId, loading, collageSets, items])
 
     const handleAddText = async ({ text, color, size }) => {
-        const { width: textWidth, height: textHeight } = measureText(text, size)
-        const padding = 4 // 2px * 2
-        const width = textWidth + padding
-        const height = textHeight + padding // tighten height
+        const { width, height, ascent, left } = measureText(text, size)
 
         const newItem = {
             id: 'text-' + Date.now(),
             collage_id: collageId, type: 'text', content: text,
             x: 0, y: 0, width: width, height: height,
-            style: { color, fontSize: size }, z_index: items.length + 10
+            style: { color, fontSize: size, ascent, paddingLeft: left + 1 }, // Store offset info
+            z_index: items.length + 10
         }
         const newItems = [...items, newItem]
 
