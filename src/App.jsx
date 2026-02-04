@@ -6,7 +6,7 @@ import { TextModal } from './components/TextModal'
 import { Login } from './components/Login'
 import { packItemsTight } from './utils/packing'
 import JSZip from 'jszip'
-import { measureText } from './utils/textUtils'
+import { textToImageBlob } from './utils/textUtils'
 
 function App() {
     const [isLoggedIn, setIsLoggedIn] = useState(false)
